@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://hezb.xyz</id>
     <title>河捉贝</title>
-    <updated>2022-01-03T12:02:34.216Z</updated>
+    <updated>2022-01-03T12:08:36.343Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://hezb.xyz"/>
     <link rel="self" href="https://hezb.xyz/atom.xml"/>
@@ -54,8 +54,7 @@
         <link href="https://hezb.xyz/post/ni-hao/">
         </link>
         <updated>2021-12-19T14:49:21.000Z</updated>
-        <content type="html"><![CDATA[<pre><code class="language-java"> System.out.println(&quot;我是河捉贝&quot;);
-</code></pre>
+        <content type="html"><![CDATA[<figure data-type="image" tabindex="1"><img src="https://hezb.xyz/post-images/1641211677795.png" alt="" loading="lazy"></figure>
 ]]></content>
     </entry>
 </feed>
