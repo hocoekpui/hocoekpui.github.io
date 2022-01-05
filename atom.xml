@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://hezb.xyz</id>
     <title>河捉贝</title>
-    <updated>2022-01-05T15:45:00.466Z</updated>
+    <updated>2022-01-05T16:42:46.708Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://hezb.xyz"/>
     <link rel="self" href="https://hezb.xyz/atom.xml"/>
@@ -11,23 +11,115 @@
     <icon>https://hezb.xyz/favicon.ico</icon>
     <rights>All rights reserved 2022, 河捉贝</rights>
     <entry>
-        <title type="html"><![CDATA[手动实现控制反转与面向切片编程思想]]></title>
-        <id>https://hezb.xyz/post/shou-dong-shi-xian-kong-zhi-fan-zhuan-yu-mian-xiang-qie-pian-bian-cheng-si-xiang/</id>
-        <link href="https://hezb.xyz/post/shou-dong-shi-xian-kong-zhi-fan-zhuan-yu-mian-xiang-qie-pian-bian-cheng-si-xiang/">
+        <title type="html"><![CDATA[动手实现控制反转与面向切面编程思想]]></title>
+        <id>https://hezb.xyz/post/dong-shou-shi-xian-kong-zhi-fan-zhuan-yu-mian-xiang-qie-mian-bian-cheng-si-xiang/</id>
+        <link href="https://hezb.xyz/post/dong-shou-shi-xian-kong-zhi-fan-zhuan-yu-mian-xiang-qie-mian-bian-cheng-si-xiang/">
         </link>
-        <updated>2022-01-03T14:19:48.000Z</updated>
-        <content type="html"><![CDATA[<h1 id="什么是控制反转">什么是控制反转</h1>
+        <updated>2022-01-05T15:46:46.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="动手实现控制反转思想">动手实现控制反转思想</h1>
+<h2 id="什么是控制反转">什么是控制反转</h2>
 <p>控制：对象创建的权利<br>
 反转：控制权交由框架</p>
-<h1 id="控制反转解决的问题">控制反转解决的问题</h1>
+<h2 id="控制反转解决的问题">控制反转解决的问题</h2>
 <p>对象之间的耦合，例如：面向接口实现类编程</p>
-<h1 id="控制反转与依赖注入的关系">控制反转与依赖注入的关系</h1>
+<h2 id="控制反转与依赖注入的关系">控制反转与依赖注入的关系</h2>
 <p>两者描述的是同一件事情，只不过前者是站在对象的角度，后者是站在容器的角度</p>
-<h1 id="什么是面向切面编程">什么是面向切面编程</h1>
+<h2 id="代码实现">代码实现</h2>
+<p>对象实例化方法：反射<br>
+解耦合方法：工厂模式</p>
+<p>首先我们看一段略微抽象的代码，可以看到两个具体实现类耦合在一起了，不符合面向接口开发的原则</p>
+<pre><code class="language-java">public class ServiceImpl implements Service{
+    private DAO dao = new DAOImpl();
+}
+</code></pre>
+<p>导致代码耦合的原因就是创建对象的方式，除了通过关键字创建对象，其实我们还可以使用工厂通过反射进行创建对象</p>
+<p>我们如果要遵循面向接口开发原则的话，首先具体实体类不能在代码实例化了，其次可以通过函数传入依赖对象</p>
+<pre><code class="language-java">public class ServiceImpl implements Service{
+    private DAO dao;
+    public void setDAO(DAO dao){
+        this.dao = dao;
+    }
+}
+</code></pre>
+<p>首先需要创建一个配置文件，里面维护类的全限定名称与类之间的依赖关系</p>
+<pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; ?&gt;
+&lt;beans&gt;
+    &lt;bean id=&quot;dao&quot; class=&quot;org.example.DAOImpl&quot;/&gt;
+    &lt;bean id=&quot;service&quot; class=&quot;org.example.ServiceImpl&quot;&gt;
+        &lt;!--猜猜我是干啥的--&gt;
+        &lt;property name=&quot;DAO&quot; ref=&quot;dao&quot;&gt;&lt;/property&gt;
+    &lt;/bean&gt;
+&lt;/beans&gt;
+</code></pre>
+<p>接下来看看如何通过实现工厂类，完成配置文件的加载与提供实例对象的功能</p>
+<pre><code class="language-java">public class BeanFactory {
+
+    /*实例化对象集合*/
+    private static Map&lt;String, Object&gt; map = new HashMap&lt;&gt;();
+
+    static {
+        /*使用类加载器，将配置文件以流的方式加载进来*/
+        InputStream resourceAsStream = BeanFactory.class.getClassLoader().getResourceAsStream(&quot;beans.xml&quot;);
+        try {
+            /*解析配置文件*/
+            SAXReader saxReader = new SAXReader();
+            Document document = saxReader.read(resourceAsStream);
+            Element rootElement = document.getRootElement();
+            List&lt;Node&gt; list = rootElement.selectNodes(&quot;//bean&quot;);
+            for (int i = 0; i &lt; list.size(); i++) {
+                /*通过反射实例化对象存放到集合当中*/
+                Element element = (Element)list.get(i);
+                String id = element.attributeValue(&quot;id&quot;);
+                String clazz = element.attributeValue(&quot;class&quot;);
+                Class&lt;?&gt; aClass = Class.forName(clazz);
+                Object o = aClass.newInstance();
+                map.put(id, o);
+            }
+
+            /*维护对象之间的依赖关系*/
+            List&lt;Node&gt; propertyNodes = rootElement.selectNodes(&quot;//property&quot;);
+            for (int i = 0; i &lt; propertyNodes.size(); i++) {
+                Element element = (Element)propertyNodes.get(i);
+                /*传值方法名称*/
+                String name = element.attributeValue(&quot;name&quot;);
+                /*依赖的类标识*/
+                String ref = element.attributeValue(&quot;ref&quot;);
+                String parentId = element.getParent().attributeValue(&quot;id&quot;);
+                Object parentObject = map.get(parentId);
+                Method[] methods = parentObject.getClass().getMethods();
+                /*通过遍历父对象方法，找到并且调用对应传值方法*/
+                for (int j = 0; j &lt; methods.length; j++) {
+                    Method method = methods[j];
+                    /*现在你可知道它是干啥的了*/
+                    if ((&quot;set&quot; + name).equalsIgnoreCase(method.getName())) {
+                        Object propertyObject = map.get(ref);
+                        method.invoke(parentObject, propertyObject);
+                    }
+                }
+                /*将处理后的实例化对象重新放到集合当中*/
+                map.put(parentId, parentObject);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /*通过类标识返回实例对象*/
+    public static Object getBean(String id) {
+        return map.get(id);
+    }
+}
+</code></pre>
+<p>至此，我们可以通过工厂获取实例化对象了</p>
+<pre><code class="language-java">Service service = (Service) BeanFactory.getBean(&quot;service&quot;);
+</code></pre>
+<h1 id="动手实现面向切面编程思想">动手实现面向切面编程思想</h1>
+<h2 id="什么是面向切面编程">什么是面向切面编程</h2>
 <p>首先面向对象编程是一种垂直继承体系，无法处理多个纵向流程中出现的重复子流程代码——横切逻辑代码</p>
 <p>面向切面编程就是不改变原有业务逻辑的情况下，悄无声息地将横切逻辑代码应用到原有的业务代码中</p>
-<h1 id="面向切面编程解决的问题">面向切面编程解决的问题</h1>
+<h2 id="面向切面编程解决的问题">面向切面编程解决的问题</h2>
 <p>业务代码与横切代码之间的耦合，例如：方法执行时长</p>
+<h2 id="代码实现-2">代码实现</h2>
 ]]></content>
     </entry>
     <entry>
