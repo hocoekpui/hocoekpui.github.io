@@ -1,0 +1,399 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>开发框架控制反转基础与高级特性 | 河捉贝</title>
+<link rel="shortcut icon" href="https://hezb.xyz/favicon.ico?v=1641483057999">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hezb.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="开发框架控制反转基础与高级特性 | 河捉贝 - Atom Feed" href="https://hezb.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="BeanFactory 与 ApplicationContext 的区别
+BeanFactory 是 Spring 框架中 IOC 容器的顶层接⼝，用于定义⼀些基础功能，而ApplicationContext 是 BeanFactory 的..." />
+    <meta name="keywords" content="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://hezb.xyz">
+  <img class="avatar" src="https://hezb.xyz/images/avatar.png?v=1641483057999" alt="">
+  </a>
+  <h1 class="site-title">
+    河捉贝
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              开发框架控制反转基础与高级特性
+            </h2>
+            <div class="post-info">
+              <span>
+                2022-01-06
+              </span>
+              <span>
+                7 min read
+              </span>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <h1 id="beanfactory-与-applicationcontext-的区别">BeanFactory 与 ApplicationContext 的区别</h1>
+<p>BeanFactory 是 Spring 框架中 IOC 容器的顶层接⼝，用于定义⼀些基础功能，而ApplicationContext 是 BeanFactory 的⼦接⼝，具备比 BeanFactory 更多的功能</p>
+<h1 id="ioc-容器启动方式">IOC 容器启动方式</h1>
+<p><strong>JavaSE</strong><br>
+ClassPathXmlApplicationContext：读取根目录配置⽂件启动<br>
+FileSystemXmlApplicationContext：读取指定磁盘路径配置⽂件启动<br>
+AnnotationConfigApplicationContext：读取配置类启动</p>
+<p><strong>JavaWeb</strong><br>
+读取配置文件启动</p>
+<pre><code class="language-xml">&lt;web-app&gt;
+&lt;!--配置文件路径--&gt;
+&lt;context-param&gt;
+   &lt;param-name&gt;contextConfigLocation&lt;/param-name&gt;
+   &lt;param-value&gt;classpath:applicationContext.xml&lt;/param-value&gt;
+&lt;/context-param&gt;
+&lt;!--监听器启动--&gt;
+&lt;listener&gt;
+   &lt;listenerclass&gt;org.springframework.web.context.ContextLoaderListener&lt;/listenerclass&gt;
+&lt;/listener&gt;
+&lt;/web-app&gt;
+</code></pre>
+<p>读取配置类启动</p>
+<pre><code class="language-xml">&lt;web-app&gt;
+ &lt;!--告知监听器通过读取配置类启动容器--&gt;
+ &lt;context-param&gt;
+    &lt;param-name&gt;contextClass&lt;/param-name&gt;
+    &lt;paramvalue&gt;org.springframework.web.context.support.AnnotationConfigWebApplicationContext&lt;/param-value&gt;
+ &lt;/context-param&gt;
+ &lt;!--配置启动类的全限定类名--&gt;
+ &lt;context-param&gt;
+    &lt;param-name&gt;contextConfigLocation&lt;/param-name&gt;
+    &lt;param-value&gt;com.xxx.xxx&lt;/param-value&gt;
+ &lt;/context-param&gt;
+ &lt;!--监听器启动--&gt;
+ &lt;listener&gt;
+    &lt;listenerclass&gt;org.springframework.web.context.ContextLoaderListener&lt;/listenerclass&gt;
+ &lt;/listener&gt;
+&lt;/web-app&gt;
+</code></pre>
+<h1 id="bean-实例化方式">Bean 实例化方式</h1>
+<p>方法一，使用无参构造函数，框架会通过反射调用无参构造函数来创建对象，如果类中没有⽆参构造函数，将创建失败</p>
+<pre><code class="language-xml">&lt;bean id=&quot;service&quot; class=&quot;com.xxx.xxx&quot;&gt;&lt;/bean&gt;
+</code></pre>
+<p>方法二，使用静态方法创建，在实际开发中，我们使⽤的对象有些时候并不是直接通过构造函数就可以创建出来的，因此需要使用到工厂方法</p>
+<pre><code class="language-xml">&lt;bean id=&quot;service&quot; class=&quot;com.xxx.xxx&quot; factory-method=&quot;xxx&quot;&gt;&lt;/bean&gt;
+</code></pre>
+<p>方法三，使用非静态方法创建，与方法二其实类似，只不过方法不再是静态方法</p>
+<pre><code class="language-xml">&lt;bean id=&quot;factory&quot; class=&quot;com.xxx.xxx&quot;&gt;&lt;/bean&gt;
+&lt;bean id=&quot;service&quot; factory-bean=&quot;factory&quot; factorymethod=&quot;xxx&quot;&gt;&lt;/bean&gt;
+</code></pre>
+<h1 id="bean-作用范围类型">Bean 作用范围类型</h1>
+<p>作用范围类型主要有两种：单例模式（默认）与多例模式，而对象的作用范围支持通过配置的方式改变</p>
+<pre><code class="language-xml">&lt;!--多例模式--&gt;
+&lt;bean id=&quot;service&quot; class=&quot;com.xxx.xxx&quot; scope=&quot;prototype&quot;&gt; &lt;/bean&gt;
+</code></pre>
+<p>单例模式对象的生命周期与容器相同，即同生共死<br>
+多例模式对象的生命周期与容器不相同，容器只负责创建，不负责销毁，即会被垃圾回收器回收</p>
+<h1 id="bean-标签属性">Bean 标签属性</h1>
+<table>
+<thead>
+<tr>
+<th>标签</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>唯一标识</td>
+</tr>
+<tr>
+<td>class</td>
+<td>类全限定名称</td>
+</tr>
+<tr>
+<td>name</td>
+<td>类名称，多个名称用逗号分隔</td>
+</tr>
+<tr>
+<td>factory-bean</td>
+<td>创建当前对象的工厂唯一标识，优先级大于类全限定名称</td>
+</tr>
+<tr>
+<td>factory-method</td>
+<td>工厂方法</td>
+</tr>
+<tr>
+<td>scope</td>
+<td>作用范围</td>
+</tr>
+<tr>
+<td>init-method</td>
+<td>对象初始化方法，要求无参方法</td>
+</tr>
+<tr>
+<td>destory-method属</td>
+<td>对象销毁方法，只有单例对象起作用</td>
+</tr>
+</tbody>
+</table>
+<h1 id="bean-依赖注入方式">Bean 依赖注入方式</h1>
+<p>设置方法注入</p>
+<pre><code class="language-xml">&lt;!--对象类型--&gt;
+&lt;property name=&quot;xxx&quot; ref=&quot;&quot;&gt;
+&lt;!--基本类型--&gt;
+&lt;property name=&quot;xxx&quot; value=&quot;&quot;&gt;
+&lt;!--复杂类型--&gt;
+&lt;property name=&quot;arrayData&quot;&gt;
+    &lt;array&gt;
+        &lt;value&gt;A&lt;/value&gt;
+        &lt;value&gt;B&lt;/value&gt;
+    &lt;/array&gt;
+&lt;/property&gt;
+
+&lt;property name=&quot;listData&quot;&gt;
+    &lt;list&gt;
+        &lt;value&gt;A&lt;/value&gt;
+        &lt;value&gt;B&lt;/value&gt;
+    &lt;/list&gt;
+&lt;/property&gt;
+
+&lt;property name=&quot;setData&quot;&gt;
+    &lt;set&gt;
+        &lt;value&gt;A&lt;/value&gt;
+        &lt;value&gt;B&lt;/value&gt;
+    &lt;/set&gt;
+&lt;/property&gt;
+
+&lt;property name=&quot;mapData&quot;&gt;
+    &lt;map&gt;
+        &lt;entry key=&quot;A&quot;&gt;A&lt;/prop&gt;
+        &lt;entry key=&quot;B&quot;&gt;B&lt;/prop&gt;
+    &lt;/map&gt;
+&lt;/property&gt;
+
+&lt;property name=&quot;propsData&quot;&gt;
+    &lt;props&gt;
+        &lt;prop key=&quot;A&quot;&gt;A&lt;/prop&gt;
+        &lt;prop key=&quot;B&quot;&gt;B&lt;/prop&gt;
+    &lt;/props&gt;
+&lt;/property&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>标签</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td>调用方法名称</td>
+</tr>
+<tr>
+<td>value</td>
+<td>基本类型传入数据</td>
+</tr>
+<tr>
+<td>ref</td>
+<td>其他类型传入数据</td>
+</tr>
+</tbody>
+</table>
+<p>构造函数注入标签</p>
+<pre><code class="language-xml">&lt;!---对象类型--&gt;
+&lt;constructor-arg name=&quot;xxx&quot; ref=&quot;xxx&quot;&gt;
+&lt;!---基本类型--&gt;
+&lt;constructor-arg name=&quot;xxx&quot; value=&quot;xxx&quot;&gt;
+&lt;!---复杂类型--&gt;
+&lt;constructor-arg name=&quot;arrayData&quot;&gt;
+    &lt;array&gt;
+        &lt;value&gt;A&lt;/value&gt;
+        &lt;value&gt;B&lt;/value&gt;
+    &lt;/array&gt;
+&lt;/constructor-arg&gt;
+
+&lt;constructor-arg name=&quot;listData&quot;&gt;
+    &lt;list&gt;
+        &lt;value&gt;A&lt;/value&gt;
+        &lt;value&gt;B&lt;/value&gt;
+    &lt;/list&gt;
+&lt;/constructor-arg&gt;
+
+&lt;constructor-arg name=&quot;setData&quot;&gt;
+    &lt;set&gt;
+        &lt;value&gt;A&lt;/value&gt;
+        &lt;value&gt;B&lt;/value&gt;
+    &lt;/set&gt;
+&lt;/constructor-arg&gt;
+
+&lt;constructor-arg name=&quot;mapData&quot;&gt;
+    &lt;map&gt;
+        &lt;entry key=&quot;A&quot;&gt;A&lt;/prop&gt;
+        &lt;entry key=&quot;B&quot;&gt;B&lt;/prop&gt;
+    &lt;/map&gt;
+&lt;/constructor-arg&gt;
+
+&lt;constructor-arg name=&quot;propsData&quot;&gt;
+    &lt;props&gt;
+        &lt;prop key=&quot;A&quot;&gt;A&lt;/prop&gt;
+        &lt;prop key=&quot;B&quot;&gt;B&lt;/prop&gt;
+    &lt;/props&gt;
+&lt;/constructor-arg&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>标签</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td>构造函数参数名称</td>
+</tr>
+<tr>
+<td>index</td>
+<td>构造函数参数索引位置，与唯一标识二选一</td>
+</tr>
+<tr>
+<td>value</td>
+<td>基本类型传入数据</td>
+</tr>
+<tr>
+<td>ref</td>
+<td>其他类型传入数据</td>
+</tr>
+</tbody>
+</table>
+<p>注意：对于构造函数注入方式，要求类中提供的构造函数参数个数必须和配置的参数个数⼀致，且数据类型匹配，同时还需要注意的是当没有⽆参构造时，则必须提供构造函数参数的注⼊，否则框架会报错</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li><a href="#beanfactory-%E4%B8%8E-applicationcontext-%E7%9A%84%E5%8C%BA%E5%88%AB">BeanFactory 与 ApplicationContext 的区别</a></li>
+<li><a href="#ioc-%E5%AE%B9%E5%99%A8%E5%90%AF%E5%8A%A8%E6%96%B9%E5%BC%8F">IOC 容器启动方式</a></li>
+<li><a href="#bean-%E5%AE%9E%E4%BE%8B%E5%8C%96%E6%96%B9%E5%BC%8F">Bean 实例化方式</a></li>
+<li><a href="#bean-%E4%BD%9C%E7%94%A8%E8%8C%83%E5%9B%B4%E7%B1%BB%E5%9E%8B">Bean 作用范围类型</a></li>
+<li><a href="#bean-%E6%A0%87%E7%AD%BE%E5%B1%9E%E6%80%A7">Bean 标签属性</a></li>
+<li><a href="#bean-%E4%BE%9D%E8%B5%96%E6%B3%A8%E5%85%A5%E6%96%B9%E5%BC%8F">Bean 依赖注入方式</a></li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://hezb.xyz/post/dong-shou-shi-xian-kong-zhi-fan-zhuan-yu-mian-xiang-qie-mian-bian-cheng-si-xiang/">
+              <h3 class="post-title">
+                动手实现控制反转与面向切面编程思想
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  
+  <a class="rss" href="https://hezb.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

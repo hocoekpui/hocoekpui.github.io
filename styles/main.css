@@ -976,7 +976,11 @@ td {
 }
 
       .main {
-        max-width: 70%;
+        max-width: 80%;
+      }
+    
+      .post-detail .post .post-content p {
+        font-size: 18px;
       }
     
       .post-container .post .post-title {
@@ -993,6 +997,10 @@ td {
       }
     
       body {
-        font-family: -apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang SC','Hiragino Sans GB','Droid Sans Fallback','Microsoft YaHei',sans-serif;
+        font-family: Georgia, serif;
+      }
+    
+      .toc-container {
+        display: none;
       }
     
