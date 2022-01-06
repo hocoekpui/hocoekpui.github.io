@@ -3,7 +3,7 @@
     <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>动手实现控制反转与面向切面编程思想 | 河捉贝</title>
-<link rel="shortcut icon" href="https://hezb.xyz/favicon.ico?v=1641400912674">
+<link rel="shortcut icon" href="https://hezb.xyz/favicon.ico?v=1641475290413">
 <link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
 <link rel="stylesheet" href="https://hezb.xyz/styles/main.css">
 <link rel="alternate" type="application/atom+xml" title="动手实现控制反转与面向切面编程思想 | 河捉贝 - Atom Feed" href="https://hezb.xyz/atom.xml">
@@ -28,7 +28,7 @@
       <div class="main-content">
         <div class="site-header">
   <a href="https://hezb.xyz">
-  <img class="avatar" src="https://hezb.xyz/images/avatar.png?v=1641400912674" alt="">
+  <img class="avatar" src="https://hezb.xyz/images/avatar.png?v=1641475290413" alt="">
   </a>
   <h1 class="site-title">
     河捉贝
@@ -82,7 +82,7 @@
                 2022-01-05
               </span>
               <span>
-                4 min read
+                7 min read
               </span>
               
             </div>
@@ -106,7 +106,7 @@
 }
 </code></pre>
 <p>导致代码耦合的原因就是创建对象的方式，除了通过关键字创建对象，其实我们还可以使用工厂通过反射进行创建对象</p>
-<p>我们如果要遵循面向接口开发原则的话，首先具体实体类不能在代码实例化了，其次可以通过函数传入依赖对象</p>
+<p>我们如果要遵循面向接口开发原则的话，首先具体实体类不能在代码实例化了，但我们可以通过函数传入对象</p>
 <pre><code class="language-java">public class ServiceImpl implements Service{
     private DAO dao;
     public void setDAO(DAO dao){
@@ -183,7 +183,7 @@
     }
 }
 </code></pre>
-<p>至此，我们可以通过工厂获取实例化对象了</p>
+<p>至此，我们可以通过工厂获取实例化对象，从而实现控制反转</p>
 <pre><code class="language-java">Service service = (Service) BeanFactory.getBean(&quot;service&quot;);
 </code></pre>
 <h1 id="动手实现面向切面编程思想">动手实现面向切面编程思想</h1>
@@ -193,6 +193,96 @@
 <h2 id="面向切面编程解决的问题">面向切面编程解决的问题</h2>
 <p>业务代码与横切代码之间的耦合，例如：方法执行时长</p>
 <h2 id="代码实现-2">代码实现</h2>
+<p>在实现之前，我们先来了解下什么是代理</p>
+<p>代理其实很好理解，日常生活中租房子，其中中介就属于代理</p>
+<p>代理又分静态代理和动态代理，先来看看静态代理的实现方式，假设有一个租房的接口</p>
+<pre><code class="language-java">public interface IRentingHouse {
+    void rentHouse();
+}
+</code></pre>
+<p>假设我们自己去找房源的话就要实现这个接口</p>
+<pre><code class="language-java">public class RentingHouseImpl implements IRentingHouse{
+    @Override
+    public void rentHouse() {
+        System.out.println(&quot;我要租一栋别墅&quot;);
+    }
+}
+</code></pre>
+<p>但往往需要找中介，中介跟我们做的事情一样，也是去找房源，所以中介也需要实现这个接口</p>
+<pre><code class="language-java">public class RentingHouseProxyImpl implements IRentingHouse{
+
+    private IRentingHouse iRentingHouse;
+
+    public RentingHouseProxyImpl(IRentingHouse iRentingHouse) {
+        this.iRentingHouse = iRentingHouse;
+    }
+
+    @Override
+    public void rentHouse() {
+        System.out.println(&quot;收取服务费三百块&quot;);
+        iRentingHouse.rentHouse();
+    }
+}
+</code></pre>
+<p>静在哪里，静在对于租房这个业务，会对应一个实实在在的代理类，当业务如果是租车，按照静态代理类的模式，还需要另外实现一个租车的代理类，这是静态代理与动态代理最直观的区别</p>
+<p>如果使用动态代理实现上述逻辑应该怎么做呢</p>
+<pre><code class="language-java">public class JDKProxyFactory {
+
+    /*单例，隐藏构造方法*/
+    private JDKProxyFactory() {
+
+    }
+
+    /*饿汉式单例模式*/
+    private static JDKProxyFactory jdkProxyFactory = new JDKProxyFactory();
+    public JDKProxyFactory getInstance() {
+        return jdkProxyFactory;
+    }
+
+    public Object getJDKProxy(final Object object) {
+        return Proxy.newProxyInstance(object.getClass().getClassLoader(), object.getClass().getInterfaces(), new InvocationHandler() {
+            @Override
+            public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                System.out.println(&quot;收取服务费三百块&quot;);
+                return method.invoke(object, args);
+            }
+        });
+    }
+}
+</code></pre>
+<p>以上这种动态代理模式要求委托类必须实现接口，下面介绍另外一种动态代理模式<br>
+首先需要引入依赖</p>
+<pre><code class="language-xml">&lt;dependency&gt;
+    &lt;groupId&gt;cglib&lt;/groupId&gt;
+    &lt;artifactId&gt;cglib&lt;/artifactId&gt;
+&lt;/dependency&gt;
+</code></pre>
+<p>代码实现如下</p>
+<pre><code class="language-java">public class CglibProxyFactory {
+
+    /*单例，隐藏构造方法*/
+    private CglibProxyFactory() {
+
+    }
+
+    /*饿汉式单例模式*/
+    private static CglibProxyFactory cglibProxyFactory = new CglibProxyFactory();
+    public CglibProxyFactory getInstance() {
+        return cglibProxyFactory;
+    }
+
+    public Object getCglibProxy(final Object object) {
+        return Enhancer.create(object.getClass(), new MethodInterceptor() {
+            @Override
+            public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
+                System.out.println(&quot;收取服务费三百块&quot;);
+                return method.invoke(object,objects);
+            }
+        });
+    }
+}
+</code></pre>
+<p>至此，我们可以通过动态代理工厂获取代理对象，并对委托方法进行增强，从而实现面向切面编程</p>
 
               </div>
               <div class="toc-container">
