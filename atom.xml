@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://hezb.xyz</id>
     <title>河捉贝</title>
-    <updated>2022-01-06T15:32:12.105Z</updated>
+    <updated>2022-01-09T06:04:17.553Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://hezb.xyz"/>
     <link rel="self" href="https://hezb.xyz/atom.xml"/>
@@ -19,10 +19,14 @@
         <content type="html"><![CDATA[<h1 id="beanfactory-与-applicationcontext-的区别">BeanFactory 与 ApplicationContext 的区别</h1>
 <p>BeanFactory 是 Spring 框架中 IOC 容器的顶层接⼝，用于定义⼀些基础功能，而ApplicationContext 是 BeanFactory 的⼦接⼝，具备比 BeanFactory 更多的功能</p>
 <h1 id="ioc-容器启动方式">IOC 容器启动方式</h1>
-<p><strong>JavaSE</strong><br>
-ClassPathXmlApplicationContext：读取根目录配置⽂件启动<br>
-FileSystemXmlApplicationContext：读取指定磁盘路径配置⽂件启动<br>
-AnnotationConfigApplicationContext：读取配置类启动</p>
+<p><strong>JavaSE</strong></p>
+<pre><code class="language-java">/*读取根目录配置⽂件启动*/
+ApplicationContext applicationContext = new ClassPathXmlApplicationContext(&quot;xxx&quot;);
+/*读取指定磁盘路径配置⽂件启动*/
+ApplicationContext applicationContext = new FileSystemXmlApplicationContext(&quot;xxx&quot;);
+/*读取配置类启动*/
+ApplicationContext applicationContext = new AnnotationConfigApplicationContext(SpringConfig.class);
+</code></pre>
 <p><strong>JavaWeb</strong><br>
 读取配置文件启动</p>
 <pre><code class="language-xml">&lt;web-app&gt;
@@ -55,7 +59,14 @@ AnnotationConfigApplicationContext：读取配置类启动</p>
  &lt;/listener&gt;
 &lt;/web-app&gt;
 </code></pre>
+<p>根据工具类获取容器对象：</p>
+<pre><code class="language-java">@Override
+public void init() throws ServletException(){
+    WebApplicationContext webApplicationContext = WebApplicationContextUtils.getWebApplicationContext(this.getServletContext());
+}
+</code></pre>
 <h1 id="bean-实例化方式">Bean 实例化方式</h1>
+<h2 id="纯配置模式">纯配置模式</h2>
 <p>方法一，使用无参构造函数，框架会通过反射调用无参构造函数来创建对象，如果类中没有⽆参构造函数，将创建失败</p>
 <pre><code class="language-xml">&lt;bean id=&quot;service&quot; class=&quot;com.xxx.xxx&quot;&gt;&lt;/bean&gt;
 </code></pre>
@@ -66,14 +77,7 @@ AnnotationConfigApplicationContext：读取配置类启动</p>
 <pre><code class="language-xml">&lt;bean id=&quot;factory&quot; class=&quot;com.xxx.xxx&quot;&gt;&lt;/bean&gt;
 &lt;bean id=&quot;service&quot; factory-bean=&quot;factory&quot; factorymethod=&quot;xxx&quot;&gt;&lt;/bean&gt;
 </code></pre>
-<h1 id="bean-作用范围类型">Bean 作用范围类型</h1>
-<p>作用范围类型主要有两种：单例模式（默认）与多例模式，而对象的作用范围支持通过配置的方式改变</p>
-<pre><code class="language-xml">&lt;!--多例模式--&gt;
-&lt;bean id=&quot;service&quot; class=&quot;com.xxx.xxx&quot; scope=&quot;prototype&quot;&gt; &lt;/bean&gt;
-</code></pre>
-<p>单例模式对象的生命周期与容器相同，即同生共死<br>
-多例模式对象的生命周期与容器不相同，容器只负责创建，不负责销毁，即会被垃圾回收器回收</p>
-<h1 id="bean-标签属性">Bean 标签属性</h1>
+<h3 id="bean-标签属性">Bean 标签属性</h3>
 <table>
 <thead>
 <tr>
@@ -111,12 +115,100 @@ AnnotationConfigApplicationContext：读取配置类启动</p>
 <td>对象初始化方法，要求无参方法</td>
 </tr>
 <tr>
-<td>destory-method属</td>
+<td>destory-method</td>
 <td>对象销毁方法，只有单例对象起作用</td>
 </tr>
 </tbody>
 </table>
+<h2 id="配置与注解结合模式">配置与注解结合模式</h2>
+<p>实际企业开发中纯配置模式使用已经很少了，比较多的是将第三方依赖定义在配置文件中，如：数据库连接池，而自身开发的类则使用注解定义</p>
+<p>为了开启注解扫描，需要在配置文件中指定扫描的包路径</p>
+<pre><code class="language-xml">&lt;context:component-scan base-package=&quot;xxx&quot;&gt;
+&lt;!--拓展：引入外部资源文件--&gt;
+&lt;context:property-placeholder location=&quot;classpath:xxx&quot;&gt;
+&lt;property name=&quot;xxx&quot; value=&quot;${xxx}&quot;&gt;
+</code></pre>
+<p>以下为配置文件中标签与注解的对应关系</p>
+<table>
+<thead>
+<tr>
+<th>配置标签</th>
+<th>注解形式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bean</td>
+<td>@Component，类的标识可配置在括号内，否则默认为类名⾸字⺟⼩写；另外，针对分层代码开发提供了该注解的三种别名 @Controller、 @Service、@Repository</td>
+</tr>
+<tr>
+<td>scope</td>
+<td>@Scope</td>
+</tr>
+<tr>
+<td>init-method</td>
+<td>@PostConstruct</td>
+</tr>
+<tr>
+<td>destory-method</td>
+<td>@PreDestory</td>
+</tr>
+</tbody>
+</table>
+<p>示例</p>
+<pre><code class="language-java">@Service(&quot;service&quot;)
+public class ServiceImpl{
+
+}
+</code></pre>
+<h2 id="纯注解模式">纯注解模式</h2>
+<table>
+<thead>
+<tr>
+<th>注解</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>@Configuration</td>
+<td>表名当前类是⼀个配置类</td>
+</tr>
+<tr>
+<td>@ComponentScan</td>
+<td>指定扫描包路径</td>
+</tr>
+<tr>
+<td>@PropertySource</td>
+<td>引⼊外部属性配置⽂件</td>
+</tr>
+<tr>
+<td>@Bean</td>
+<td>将⽅法返回对象加⼊容器</td>
+</tr>
+<tr>
+<td>@Import</td>
+<td>引⼊其他配置类</td>
+</tr>
+</tbody>
+</table>
+<p>示例</p>
+<pre><code class="language-java">@Configuration
+@ComponentScan({&quot;com.xxx&quot;})
+@PropertySource({&quot;classpath:xx&quot;})
+@Import({AnotherSpringConfig.class})
+public class SpringConfig {
+
+    @Bean(&quot;dataSource&quot;)
+    public DataSource createDataSource(){
+        DruidDataSource druidDataSource = new DruidDataSource();
+        System.out.println(&quot;Using dataSource config...&quot;);
+        return druidDataSource;
+    }
+}
+</code></pre>
 <h1 id="bean-依赖注入方式">Bean 依赖注入方式</h1>
+<h2 id="配置模式">配置模式</h2>
 <p>设置方法注入</p>
 <pre><code class="language-xml">&lt;!--对象类型--&gt;
 &lt;property name=&quot;xxx&quot; ref=&quot;&quot;&gt;
@@ -172,11 +264,11 @@ AnnotationConfigApplicationContext：读取配置类启动</p>
 </tr>
 <tr>
 <td>value</td>
-<td>基本类型传入数据</td>
+<td>基本类型数据</td>
 </tr>
 <tr>
 <td>ref</td>
-<td>其他类型传入数据</td>
+<td>对象类型数据</td>
 </tr>
 </tbody>
 </table>
@@ -235,7 +327,7 @@ AnnotationConfigApplicationContext：读取配置类启动</p>
 </tr>
 <tr>
 <td>index</td>
-<td>构造函数参数索引位置，与唯一标识二选一</td>
+<td>构造函数参数索引位置，与参数名称属性二选一</td>
 </tr>
 <tr>
 <td>value</td>
@@ -243,11 +335,57 @@ AnnotationConfigApplicationContext：读取配置类启动</p>
 </tr>
 <tr>
 <td>ref</td>
-<td>其他类型传入数据</td>
+<td>对象类型数据</td>
 </tr>
 </tbody>
 </table>
 <p>注意：对于构造函数注入方式，要求类中提供的构造函数参数个数必须和配置的参数个数⼀致，且数据类型匹配，同时还需要注意的是当没有⽆参构造时，则必须提供构造函数参数的注⼊，否则框架会报错</p>
+<h2 id="注解模式">注解模式</h2>
+<table>
+<thead>
+<tr>
+<th>注解</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>@Autowired</td>
+<td>按照类型注⼊，当一个类型有多个实现类的时候则会造成无法选择具体注入哪个类的情况</td>
+</tr>
+<tr>
+<td>@Qualifier</td>
+<td>告知容器具体装配的具体实现类唯一标识</td>
+</tr>
+<tr>
+<td>@Resource</td>
+<td>告知容器具体装配的具体实现类名或者类型，默认按照名称自动注入</td>
+</tr>
+<tr>
+<td>@Value</td>
+<td>对变量赋值，可以直接赋值，也可以使⽤ ${} 读取资源配置⽂件中的信息</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-java">/*配置与注解结合模式*/
+@Autowired
+private Set&lt;String&gt; locations;
+
+/*纯注解模式*/
+@Value(&quot;#{${map}}&quot;)
+private Map&lt;String, String&gt; map;
+</code></pre>
+<h1 id="bean-作用范围类型">Bean 作用范围类型</h1>
+<p>作用范围类型主要有两种：单例模式（默认）与多例模式，而对象的作用范围有两种方式进行修改</p>
+<p>配置方式</p>
+<pre><code class="language-xml">&lt;bean id=&quot;service&quot; class=&quot;com.xxx.xxx&quot; scope=&quot;prototype&quot;&gt; &lt;/bean&gt;
+</code></pre>
+<p>注解方式</p>
+<pre><code class="language-java">@Scope(value = &quot;prototype&quot;)
+</code></pre>
+<h2 id="不同作用范围的生命周期">不同作用范围的生命周期</h2>
+<p>单例模式对象的生命周期与容器相同，即同生共死<br>
+多例模式对象的生命周期与容器不相同，容器只负责创建，不负责销毁，即会被垃圾回收器回收</p>
 ]]></content>
     </entry>
     <entry>
