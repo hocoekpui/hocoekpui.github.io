@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://hezb.xyz</id>
     <title>河捉贝</title>
-    <updated>2022-01-09T14:47:26.810Z</updated>
+    <updated>2022-01-09T15:16:52.983Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://hezb.xyz"/>
     <link rel="self" href="https://hezb.xyz/atom.xml"/>
@@ -10,6 +10,52 @@
     <logo>https://hezb.xyz/images/avatar.png</logo>
     <icon>https://hezb.xyz/favicon.ico</icon>
     <rights>All rights reserved 2022, 河捉贝</rights>
+    <entry>
+        <title type="html"><![CDATA[容器初始化主流程代码调用分析]]></title>
+        <id>https://hezb.xyz/post/rong-qi-chu-shi-hua-zhu-liu-cheng-dai-ma-diao-yong-fen-xi/</id>
+        <link href="https://hezb.xyz/post/rong-qi-chu-shi-hua-zhu-liu-cheng-dai-ma-diao-yong-fen-xi/">
+        </link>
+        <updated>2022-01-09T14:57:17.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="生命周期关键时机点底层调用规律">生命周期关键时机点底层调用规律</h1>
+<p>通过实现特殊接⼝，并分别在接⼝实现的构造器、接⼝⽅法中断点，观察线程调⽤栈发现</p>
+<p>对象创建的关键时机点代码相同的层级调用：AbstractApplicationContext#refresh</p>
+<table>
+<thead>
+<tr>
+<th>关键点</th>
+<th>触发代码</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Constructor 构造器执行</td>
+<td>refresh#finishBeanFactoryInitialization(beanFactory)(beanFactory)</td>
+</tr>
+<tr>
+<td>InitializingBean 方法执行</td>
+<td>refresh#finishBeanFactoryInitialization(beanFactory)(beanFactory)</td>
+</tr>
+<tr>
+<td>BeanFactoryPostProcessor 初始化</td>
+<td>refresh#invokeBeanFactoryPostProcessors(beanFactory)</td>
+</tr>
+<tr>
+<td>BeanFactoryPostProcessor 方法调用</td>
+<td>refresh#invokeBeanFactoryPostProcessors(beanFactory)</td>
+</tr>
+<tr>
+<td>BeanPostProcessor 初始化</td>
+<td>refresh#registerBeanPostProcessors(beanFactory)</td>
+</tr>
+<tr>
+<td>BeanPostProcessor 方法调用</td>
+<td>refresh#finishBeanFactoryInitialization(beanFactory)</td>
+</tr>
+</tbody>
+</table>
+<h1 id="容器启动核心方法解析">容器启动核心方法解析</h1>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[开发框架控制反转基础与高级特性]]></title>
         <id>https://hezb.xyz/post/kai-fa-kuang-jia-kong-zhi-fan-zhuan-ji-chu-yu-gao-ji-te-xing/</id>
