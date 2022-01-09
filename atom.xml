@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://hezb.xyz</id>
     <title>河捉贝</title>
-    <updated>2022-01-09T13:19:36.075Z</updated>
+    <updated>2022-01-09T14:47:26.810Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://hezb.xyz"/>
     <link rel="self" href="https://hezb.xyz/atom.xml"/>
@@ -17,7 +17,7 @@
         </link>
         <updated>2022-01-06T13:45:20.000Z</updated>
         <content type="html"><![CDATA[<h1 id="beanfactory-与-applicationcontext-的区别">BeanFactory 与 ApplicationContext 的区别</h1>
-<p>BeanFactory 是 Spring 框架中 IOC 容器的顶层接⼝，用于定义⼀些基础功能，而ApplicationContext 是 BeanFactory 的⼦接⼝，具备比 BeanFactory 更多的功能</p>
+<p>BeanFactory 是 Spring 框架中 IOC 容器的顶层接⼝，用于定义⼀些基础功能，而ApplicationContext 是 BeanFactory 的⼦层接⼝，具备比 BeanFactory 更多的功能</p>
 <h1 id="ioc-容器启动方式">IOC 容器启动方式</h1>
 <p><strong>JavaSE</strong></p>
 <pre><code class="language-java">/*读取根目录配置⽂件启动*/
