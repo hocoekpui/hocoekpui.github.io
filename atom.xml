@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://hezb.xyz</id>
     <title>河捉贝</title>
-    <updated>2022-01-09T06:09:13.731Z</updated>
+    <updated>2022-01-09T13:19:36.075Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://hezb.xyz"/>
     <link rel="self" href="https://hezb.xyz/atom.xml"/>
@@ -351,7 +351,7 @@ public class SpringConfig {
 </tr>
 <tr>
 <td>@Qualifier</td>
-<td>告知容器具体装配的具体实现类唯一标识</td>
+<td>告知容器具体装配的具体实现类唯一标识，仅在存在多个具体实现类有效</td>
 </tr>
 <tr>
 <td>@Resource</td>
@@ -377,15 +377,81 @@ private Map&lt;String, String&gt; map;
 </code></pre>
 <h1 id="bean-作用范围类型">Bean 作用范围类型</h1>
 <p>作用范围类型主要有两种：单例模式（默认）与多例模式，而对象的作用范围有两种方式进行修改</p>
-<p>配置方式</p>
+<p>配置模式</p>
 <pre><code class="language-xml">&lt;bean id=&quot;service&quot; class=&quot;com.xxx.xxx&quot; scope=&quot;prototype&quot;&gt; &lt;/bean&gt;
 </code></pre>
-<p>注解方式</p>
+<p>注解模式</p>
 <pre><code class="language-java">@Scope(value = &quot;prototype&quot;)
 </code></pre>
 <h2 id="不同作用范围的生命周期">不同作用范围的生命周期</h2>
 <p>单例模式对象的生命周期与容器相同，即同生共死<br>
 多例模式对象的生命周期与容器不相同，容器只负责创建，不负责销毁，即会被垃圾回收器回收</p>
+<h1 id="高级特性">高级特性</h1>
+<h2 id="lazy-init">Lazy init</h2>
+<p>容器的默认⾏为是在启动服务器时将所有单例对象提前进⾏实例化，⼀定程度提⾼容器启动和运转性能</p>
+<p>注意：懒加载机制只适用于单例对象</p>
+<p>将对象设置为延迟加载的两种方式<br>
+配置模式</p>
+<pre><code class="language-xml">&lt;bean id=&quot;bean&quot; calss=&quot;com.xxx&quot; lazy-init=&quot;true&quot; /&gt;
+&lt;!--全局配置--&gt;
+&lt;beans default-lazy-init=&quot;true&quot;&gt;
+</code></pre>
+<p>注解模式</p>
+<pre><code class="language-java">@Lazy
+</code></pre>
+<h2 id="factorybean">FactoryBean</h2>
+<p>实现该接口则可⾃定义复杂对象的创建过程</p>
+<pre><code class="language-java">public interface FactoryBean&lt;T&gt; {
+
+    @Nullable
+    T getObject() throws Exception;
+
+    @Nullable
+    Class&lt;?&gt; getObjectType();
+
+    default boolean isSingleton() {
+        return true;
+    }
+}
+</code></pre>
+<p>如果需要通过类唯一标识获取工厂本身的对象，需要在唯一标识前添加符号“&amp;”</p>
+<pre><code class="language-java">application.getBean(&quot;&amp;xxx&quot;)
+</code></pre>
+<h2 id="beanpostprocessor-beanfactorypostprocessor">BeanPostProcessor BeanFactoryPostProcessor</h2>
+<p>框架为我们提供了两个后处理的扩展接口，两者分别是针对于对象与对象工厂的后处理接口</p>
+<p>以下为对象的生命周期流程图<br>
+<img src="https://hezb.xyz/post-images/1641731685765.png" alt="" loading="lazy"></p>
+<p>如图所示，对象后处理的两个方法发生在对象实例化和依赖注入之后，并且位于初始化完成前后</p>
+<pre><code class="language-java">public interface BeanPostProcessor {
+    @Nullable
+    default Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+        return bean;
+    }
+
+    @Nullable
+    default Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+        return bean;
+    }
+}
+</code></pre>
+<p>事实上，在实例化之前，容器会加载配置文件，然后将对象的配置信息封装成 BeanDefinition 对象</p>
+<p>工厂初始化完成之后，在生产实际对象之前对象工厂后处理接口会被调用，根据接口定义得知，此时框架可以对定义的属性进行修改</p>
+<pre><code class="language-java">public interface ConfigurableListableBeanFactory extends ListableBeanFactory, AutowireCapableBeanFactory, ConfigurableBeanFactory {
+    BeanDefinition getBeanDefinition(String var1) throws NoSuchBeanDefinitionException;
+}
+</code></pre>
+<p>因此框架中有一个经典的底层应用：PropertyPlaceholderConfigurer，用于替换配置属性的占位符，关键方法实现如下</p>
+<pre><code class="language-java">    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
+        try {
+            /*加载配置文件，合并相同名字的配置信息*/
+            Properties mergedProps = this.mergeProperties();
+            this.convertProperties(mergedProps);
+            this.processProperties(beanFactory, mergedProps);
+        } catch (IOException var3) {
+            throw new BeanInitializationException(&quot;Could not load properties&quot;, var3);
+        }
+    }
+</code></pre>
 ]]></content>
     </entry>
     <entry>
