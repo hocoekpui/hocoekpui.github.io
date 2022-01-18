@@ -1,0 +1,400 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>面向切片编程高级应用与源码分析 | 河捉贝</title>
+<link rel="shortcut icon" href="https://hezb.xyz/favicon.ico?v=1642520235353">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hezb.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="面向切片编程高级应用与源码分析 | 河捉贝 - Atom Feed" href="https://hezb.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="术语
+
+
+
+名次
+解释
+
+
+
+
+Joinpoint
+连接点，指程序可被功能增强的时机点
+
+
+Pointcut
+切入点，指需要被功能增强的方法描述
+
+
+Advice
+通知，指⽤于提供增强功能的⽅法
+
+
+Target
+目标对象，指被代理对象
+
+..." />
+    <meta name="keywords" content="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://hezb.xyz">
+  <img class="avatar" src="https://hezb.xyz/images/avatar.png?v=1642520235353" alt="">
+  </a>
+  <h1 class="site-title">
+    河捉贝
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              面向切片编程高级应用与源码分析
+            </h2>
+            <div class="post-info">
+              <span>
+                2022-01-18
+              </span>
+              <span>
+                6 min read
+              </span>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <h1 id="术语">术语</h1>
+<table>
+<thead>
+<tr>
+<th>名次</th>
+<th>解释</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Joinpoint</td>
+<td>连接点，指程序可被功能增强的时机点</td>
+</tr>
+<tr>
+<td>Pointcut</td>
+<td>切入点，指需要被功能增强的方法描述</td>
+</tr>
+<tr>
+<td>Advice</td>
+<td>通知，指⽤于提供增强功能的⽅法</td>
+</tr>
+<tr>
+<td>Target</td>
+<td>目标对象，指被代理对象</td>
+</tr>
+<tr>
+<td>Proxy</td>
+<td>代理对象，指产生的代理类对象</td>
+</tr>
+<tr>
+<td>Weaving</td>
+<td>织入，指创建新的代理对象的过程</td>
+</tr>
+<tr>
+<td>Aspect</td>
+<td>切面，指切入点、连接点与横切代码逻辑的综合体</td>
+</tr>
+</tbody>
+</table>
+<h1 id="面向切面编程的配置方式">面向切面编程的配置方式</h1>
+<p>引入依赖</p>
+<pre><code class="language-xml">&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-aop&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.aspectj&lt;/groupId&gt;
+    &lt;artifactId&gt;aspectjweaver&lt;/artifactId&gt;
+&lt;/dependency&gt;
+</code></pre>
+<h2 id="纯配置">纯配置</h2>
+<pre><code class="language-xml">&lt;bean id=&quot;logUtils&quot; class=&quot;com.xxx.LogUtils&quot;&gt;&lt;/bean&gt;
+&lt;aop:config&gt;
+    &lt;aop:aspect id=&quot;logAspect&quot; ref=&quot;logUtils&quot;&gt;
+        &lt;aop:pointcut id=&quot;pointCut&quot; expression=&quot;execution(* com.xxx.*(..))&quot;/&gt;
+        &lt;!--前置通知--&gt;
+        &lt;aop:before method=&quot;beforeMethod&quot; pointcut-ref=&quot;pointCut&quot;/&gt;
+        &lt;!--最终通知--&gt;
+        &lt;aop:after method=&quot;afterMethod&quot; pointcut-ref=&quot;pointCut&quot;/&gt;
+        &lt;!--后置通知--&gt;
+        &lt;aop:after-returning method=&quot;afterReturningMethod&quot; pointcut-ref=&quot;pointCut&quot; returning=&quot;value&quot;/&gt;
+        &lt;!--异常通知--&gt;
+        &lt;aop:after-throwing method=&quot;afterThrowingMethod&quot; pointcut-ref=&quot;pointCut&quot;/&gt;
+        &lt;!--环绕通知--&gt;
+        &lt;aop:around method=&quot;aroundMethod&quot; pointcut-ref=&quot;pointCut&quot;/&gt;
+    &lt;/aop:aspect&gt;
+&lt;/aop:config&gt;
+</code></pre>
+<p>拓展：</p>
+<p>切入点表达式格式：访问修饰符 返回值 包名.类名.⽅法名(参数列表)，例如：全通配方式：* <em>..</em>.*(..)<br>
+其中访问修饰符可以忽略，返回值可用 * 表示任意返回值，包名可用 .. 表示当前包及其子包，参数列表对于基本类型可直接使用具体类型，引用类型必须写全限定名称，也可用 .. 标识有无参数均可</p>
+<p>环绕通知：框架提供的⼀种可以通过编码的⽅式，控制增强代码何时执⾏的通知类型</p>
+<h2 id="配置与注解组合配置">配置与注解组合配置</h2>
+<p>开启注解驱动</p>
+<pre><code class="language-xml">&lt;aop:aspectj-autoproxy/&gt;
+</code></pre>
+<p>代码改造</p>
+<pre><code class="language-java">@Component
+@Aspect
+public class LogUtils {
+
+    @Pointcut(&quot;* *..*.*(..)&quot;)
+    public void pointCut(){
+
+    }
+
+    @Before(&quot;pointCut()&quot;)
+    public void beforeMethod(JoinPoint joinPoint) {
+        Object[] args = joinPoint.getArgs();
+        System.out.println(&quot;前置通知，参数：&quot; + Arrays.toString(args));
+    }
+
+    @After(&quot;pointCut()&quot;)
+    public void afterMethod() {
+        System.out.println(&quot;最终通知&quot;);
+    }
+
+    @AfterThrowing(&quot;pointCut()&quot;, throwing = &quot;e&quot;)
+    public void exceptionMethod(Exception e) {
+        System.out.println(&quot;异常通知，异常：&quot; + e);
+    }
+
+    @AfterReturning(value = &quot;pointCut()&quot;,returning = &quot;result&quot;)
+    public void successMethod(Object result) {
+        System.out.println(&quot;后置通知，返回值：&quot;  + result);
+    }
+
+    @Around(&quot;pointCut()&quot;)
+    public Object arroundMethod(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
+        Object result = null;
+        try{
+            System.out.println(&quot;前置通知&quot;);
+            result = proceedingJoinPoint.proceed(proceedingJoinPoint.getArgs());
+            System.out.println(&quot;后置通知&quot;);
+        }catch(Exception e) {
+            System.out.println(&quot;异常通知&quot;);
+        }finally {
+            System.out.println(&quot;最终通知&quot;);
+        }
+        return result;
+    }
+}
+</code></pre>
+<h2 id="纯注解配置">纯注解配置</h2>
+<p>将开启注解驱动的配置替换为以下注解即可</p>
+<pre><code class="language-java">@EnableAspectJAutoProxy
+</code></pre>
+<h1 id="声明式事务的支持">声明式事务的支持</h1>
+<p>编程式事务：业务代码中添加事务控制代码<br>
+声明式事务：通过配置文件或者注解配置的⽅式达到事务控制的⽬的</p>
+<h2 id="事务的概念">事务的概念</h2>
+<p>指逻辑上的⼀组操作要么全部成功，要么全部失败</p>
+<h2 id="事务四大特性">事务四大特性</h2>
+<p>原子性：事务是⼀个不可分割的⼯作单位，事务中的操作要么都发⽣，要么都<br>
+不发⽣<br>
+一致性：事务必须使数据库从⼀个⼀致性状态变换到另外⼀个⼀致性状态<br>
+隔离性：多个并发事务之间要相互隔离<br>
+持久性：事务⼀旦被提交，对数据库中数据的改变就是永久性的</p>
+<h2 id="事务隔离级别">事务隔离级别</h2>
+<p>不考虑事务隔离会造成的错误<br>
+脏读：⼀个线程中的事务读到了另外⼀个线程中未提交的数据<br>
+不可重复读：⼀个线程中的事务读到了另外⼀个线程中已经提交的数据<br>
+幻读：⼀个线程中的事务读到了另外⼀个线程中已经提交的新增或删除数据</p>
+<p>四种隔离界别<br>
+串行化：可避免脏读、不可重复读、幻读情况的发⽣<br>
+可重复读：可避免脏读、不可重复读情况的发⽣<br>
+读已提交：可避免脏读<br>
+读未提交：无法保证</p>
+<p>注意：级别依次升⾼，效率依次降低</p>
+<h2 id="事务传播行为">事务传播行为</h2>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>传播行为</th>
+<th>解释</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>创建型</td>
+<td>PROPAGATION_REQUIRED</td>
+<td>如果当前没有事务，就新建⼀个事务，如果已经存在⼀个事务中，加⼊到这个事务中</td>
+</tr>
+<tr>
+<td>创建型</td>
+<td>PROPAGATION_REQUIRES_NEW</td>
+<td>新建⼀个事务，如果当前存在事务，把当前事务挂起</td>
+</tr>
+<tr>
+<td>创建型</td>
+<td>PROPAGATION_NESTED</td>
+<td>如果当前存在事务，则在嵌套事务内执⾏，否则就创建一个事务</td>
+</tr>
+<tr>
+<td>非事务型</td>
+<td>PROPAGATION_SUPPORTS</td>
+<td>如果当前没有事务，就以⾮事务⽅式执⾏</td>
+</tr>
+<tr>
+<td>非事务型</td>
+<td>PROPAGATION_NOT_SUPPORTED</td>
+<td>如果当前存在事务，就把当前事务挂起</td>
+</tr>
+<tr>
+<td>异常型</td>
+<td>PROPAGATION_MANDATORY</td>
+<td>如果当前没有事务，就抛出异常</td>
+</tr>
+<tr>
+<td>异常型</td>
+<td>PROPAGATION_NEVER</td>
+<td>如果当前存在事务，则抛出异常</td>
+</tr>
+</tbody>
+</table>
+<h2 id="事务失效场景">事务失效场景</h2>
+<p>https://juejin.cn/post/7003949263281455112</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li><a href="#%E6%9C%AF%E8%AF%AD">术语</a></li>
+<li><a href="#%E9%9D%A2%E5%90%91%E5%88%87%E9%9D%A2%E7%BC%96%E7%A8%8B%E7%9A%84%E9%85%8D%E7%BD%AE%E6%96%B9%E5%BC%8F">面向切面编程的配置方式</a>
+<ul>
+<li><a href="#%E7%BA%AF%E9%85%8D%E7%BD%AE">纯配置</a></li>
+<li><a href="#%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%B3%A8%E8%A7%A3%E7%BB%84%E5%90%88%E9%85%8D%E7%BD%AE">配置与注解组合配置</a></li>
+<li><a href="#%E7%BA%AF%E6%B3%A8%E8%A7%A3%E9%85%8D%E7%BD%AE">纯注解配置</a></li>
+</ul>
+</li>
+<li><a href="#%E5%A3%B0%E6%98%8E%E5%BC%8F%E4%BA%8B%E5%8A%A1%E7%9A%84%E6%94%AF%E6%8C%81">声明式事务的支持</a>
+<ul>
+<li><a href="#%E4%BA%8B%E5%8A%A1%E7%9A%84%E6%A6%82%E5%BF%B5">事务的概念</a></li>
+<li><a href="#%E4%BA%8B%E5%8A%A1%E5%9B%9B%E5%A4%A7%E7%89%B9%E6%80%A7">事务四大特性</a></li>
+<li><a href="#%E4%BA%8B%E5%8A%A1%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB">事务隔离级别</a></li>
+<li><a href="#%E4%BA%8B%E5%8A%A1%E4%BC%A0%E6%92%AD%E8%A1%8C%E4%B8%BA">事务传播行为</a></li>
+<li><a href="#%E4%BA%8B%E5%8A%A1%E5%A4%B1%E6%95%88%E5%9C%BA%E6%99%AF">事务失效场景</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://hezb.xyz/post/rong-qi-chu-shi-hua-zhu-liu-cheng-dai-ma-diao-yong-fen-xi/">
+              <h3 class="post-title">
+                容器初始化主流程代码调用分析
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  
+  <a class="rss" href="https://hezb.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://hezb.xyz</id>
     <title>河捉贝</title>
-    <updated>2022-01-10T15:06:30.834Z</updated>
+    <updated>2022-01-18T15:43:53.483Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://hezb.xyz"/>
     <link rel="self" href="https://hezb.xyz/atom.xml"/>
@@ -10,6 +10,212 @@
     <logo>https://hezb.xyz/images/avatar.png</logo>
     <icon>https://hezb.xyz/favicon.ico</icon>
     <rights>All rights reserved 2022, 河捉贝</rights>
+    <entry>
+        <title type="html"><![CDATA[面向切片编程高级应用与源码分析]]></title>
+        <id>https://hezb.xyz/post/mian-xiang-qie-pian-bian-cheng-gao-ji-ying-yong-yu-yuan-ma-fen-xi/</id>
+        <link href="https://hezb.xyz/post/mian-xiang-qie-pian-bian-cheng-gao-ji-ying-yong-yu-yuan-ma-fen-xi/">
+        </link>
+        <updated>2022-01-18T14:00:17.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="术语">术语</h1>
+<table>
+<thead>
+<tr>
+<th>名次</th>
+<th>解释</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Joinpoint</td>
+<td>连接点，指程序可被功能增强的时机点</td>
+</tr>
+<tr>
+<td>Pointcut</td>
+<td>切入点，指需要被功能增强的方法描述</td>
+</tr>
+<tr>
+<td>Advice</td>
+<td>通知，指⽤于提供增强功能的⽅法</td>
+</tr>
+<tr>
+<td>Target</td>
+<td>目标对象，指被代理对象</td>
+</tr>
+<tr>
+<td>Proxy</td>
+<td>代理对象，指产生的代理类对象</td>
+</tr>
+<tr>
+<td>Weaving</td>
+<td>织入，指创建新的代理对象的过程</td>
+</tr>
+<tr>
+<td>Aspect</td>
+<td>切面，指切入点、连接点与横切代码逻辑的综合体</td>
+</tr>
+</tbody>
+</table>
+<h1 id="面向切面编程的配置方式">面向切面编程的配置方式</h1>
+<p>引入依赖</p>
+<pre><code class="language-xml">&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-aop&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.aspectj&lt;/groupId&gt;
+    &lt;artifactId&gt;aspectjweaver&lt;/artifactId&gt;
+&lt;/dependency&gt;
+</code></pre>
+<h2 id="纯配置">纯配置</h2>
+<pre><code class="language-xml">&lt;bean id=&quot;logUtils&quot; class=&quot;com.xxx.LogUtils&quot;&gt;&lt;/bean&gt;
+&lt;aop:config&gt;
+    &lt;aop:aspect id=&quot;logAspect&quot; ref=&quot;logUtils&quot;&gt;
+        &lt;aop:pointcut id=&quot;pointCut&quot; expression=&quot;execution(* com.xxx.*(..))&quot;/&gt;
+        &lt;!--前置通知--&gt;
+        &lt;aop:before method=&quot;beforeMethod&quot; pointcut-ref=&quot;pointCut&quot;/&gt;
+        &lt;!--最终通知--&gt;
+        &lt;aop:after method=&quot;afterMethod&quot; pointcut-ref=&quot;pointCut&quot;/&gt;
+        &lt;!--后置通知--&gt;
+        &lt;aop:after-returning method=&quot;afterReturningMethod&quot; pointcut-ref=&quot;pointCut&quot; returning=&quot;value&quot;/&gt;
+        &lt;!--异常通知--&gt;
+        &lt;aop:after-throwing method=&quot;afterThrowingMethod&quot; pointcut-ref=&quot;pointCut&quot;/&gt;
+        &lt;!--环绕通知--&gt;
+        &lt;aop:around method=&quot;aroundMethod&quot; pointcut-ref=&quot;pointCut&quot;/&gt;
+    &lt;/aop:aspect&gt;
+&lt;/aop:config&gt;
+</code></pre>
+<p>拓展：</p>
+<p>切入点表达式格式：访问修饰符 返回值 包名.类名.⽅法名(参数列表)，例如：全通配方式：* <em>..</em>.*(..)<br>
+其中访问修饰符可以忽略，返回值可用 * 表示任意返回值，包名可用 .. 表示当前包及其子包，参数列表对于基本类型可直接使用具体类型，引用类型必须写全限定名称，也可用 .. 标识有无参数均可</p>
+<p>环绕通知：框架提供的⼀种可以通过编码的⽅式，控制增强代码何时执⾏的通知类型</p>
+<h2 id="配置与注解组合配置">配置与注解组合配置</h2>
+<p>开启注解驱动</p>
+<pre><code class="language-xml">&lt;aop:aspectj-autoproxy/&gt;
+</code></pre>
+<p>代码改造</p>
+<pre><code class="language-java">@Component
+@Aspect
+public class LogUtils {
+
+    @Pointcut(&quot;* *..*.*(..)&quot;)
+    public void pointCut(){
+
+    }
+
+    @Before(&quot;pointCut()&quot;)
+    public void beforeMethod(JoinPoint joinPoint) {
+        Object[] args = joinPoint.getArgs();
+        System.out.println(&quot;前置通知，参数：&quot; + Arrays.toString(args));
+    }
+
+    @After(&quot;pointCut()&quot;)
+    public void afterMethod() {
+        System.out.println(&quot;最终通知&quot;);
+    }
+
+    @AfterThrowing(&quot;pointCut()&quot;, throwing = &quot;e&quot;)
+    public void exceptionMethod(Exception e) {
+        System.out.println(&quot;异常通知，异常：&quot; + e);
+    }
+
+    @AfterReturning(value = &quot;pointCut()&quot;,returning = &quot;result&quot;)
+    public void successMethod(Object result) {
+        System.out.println(&quot;后置通知，返回值：&quot;  + result);
+    }
+
+    @Around(&quot;pointCut()&quot;)
+    public Object arroundMethod(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
+        Object result = null;
+        try{
+            System.out.println(&quot;前置通知&quot;);
+            result = proceedingJoinPoint.proceed(proceedingJoinPoint.getArgs());
+            System.out.println(&quot;后置通知&quot;);
+        }catch(Exception e) {
+            System.out.println(&quot;异常通知&quot;);
+        }finally {
+            System.out.println(&quot;最终通知&quot;);
+        }
+        return result;
+    }
+}
+</code></pre>
+<h2 id="纯注解配置">纯注解配置</h2>
+<p>将开启注解驱动的配置替换为以下注解即可</p>
+<pre><code class="language-java">@EnableAspectJAutoProxy
+</code></pre>
+<h1 id="声明式事务的支持">声明式事务的支持</h1>
+<p>编程式事务：业务代码中添加事务控制代码<br>
+声明式事务：通过配置文件或者注解配置的⽅式达到事务控制的⽬的</p>
+<h2 id="事务的概念">事务的概念</h2>
+<p>指逻辑上的⼀组操作要么全部成功，要么全部失败</p>
+<h2 id="事务四大特性">事务四大特性</h2>
+<p>原子性：事务是⼀个不可分割的⼯作单位，事务中的操作要么都发⽣，要么都<br>
+不发⽣<br>
+一致性：事务必须使数据库从⼀个⼀致性状态变换到另外⼀个⼀致性状态<br>
+隔离性：多个并发事务之间要相互隔离<br>
+持久性：事务⼀旦被提交，对数据库中数据的改变就是永久性的</p>
+<h2 id="事务隔离级别">事务隔离级别</h2>
+<p>不考虑事务隔离会造成的错误<br>
+脏读：⼀个线程中的事务读到了另外⼀个线程中未提交的数据<br>
+不可重复读：⼀个线程中的事务读到了另外⼀个线程中已经提交的数据<br>
+幻读：⼀个线程中的事务读到了另外⼀个线程中已经提交的新增或删除数据</p>
+<p>四种隔离界别<br>
+串行化：可避免脏读、不可重复读、幻读情况的发⽣<br>
+可重复读：可避免脏读、不可重复读情况的发⽣<br>
+读已提交：可避免脏读<br>
+读未提交：无法保证</p>
+<p>注意：级别依次升⾼，效率依次降低</p>
+<h2 id="事务传播行为">事务传播行为</h2>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>传播行为</th>
+<th>解释</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>创建型</td>
+<td>PROPAGATION_REQUIRED</td>
+<td>如果当前没有事务，就新建⼀个事务，如果已经存在⼀个事务中，加⼊到这个事务中</td>
+</tr>
+<tr>
+<td>创建型</td>
+<td>PROPAGATION_REQUIRES_NEW</td>
+<td>新建⼀个事务，如果当前存在事务，把当前事务挂起</td>
+</tr>
+<tr>
+<td>创建型</td>
+<td>PROPAGATION_NESTED</td>
+<td>如果当前存在事务，则在嵌套事务内执⾏，否则就创建一个事务</td>
+</tr>
+<tr>
+<td>非事务型</td>
+<td>PROPAGATION_SUPPORTS</td>
+<td>如果当前没有事务，就以⾮事务⽅式执⾏</td>
+</tr>
+<tr>
+<td>非事务型</td>
+<td>PROPAGATION_NOT_SUPPORTED</td>
+<td>如果当前存在事务，就把当前事务挂起</td>
+</tr>
+<tr>
+<td>异常型</td>
+<td>PROPAGATION_MANDATORY</td>
+<td>如果当前没有事务，就抛出异常</td>
+</tr>
+<tr>
+<td>异常型</td>
+<td>PROPAGATION_NEVER</td>
+<td>如果当前存在事务，则抛出异常</td>
+</tr>
+</tbody>
+</table>
+<h2 id="事务失效场景">事务失效场景</h2>
+<p>https://juejin.cn/post/7003949263281455112</p>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[容器初始化主流程代码调用分析]]></title>
         <id>https://hezb.xyz/post/rong-qi-chu-shi-hua-zhu-liu-cheng-dai-ma-diao-yong-fen-xi/</id>
