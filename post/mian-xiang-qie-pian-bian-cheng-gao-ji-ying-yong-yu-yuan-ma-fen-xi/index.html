@@ -3,7 +3,7 @@
     <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>面向切片编程高级应用与源码分析 | 河捉贝</title>
-<link rel="shortcut icon" href="https://hezb.xyz/favicon.ico?v=1642520235353">
+<link rel="shortcut icon" href="https://hezb.xyz/favicon.ico?v=1642602736512">
 <link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
 <link rel="stylesheet" href="https://hezb.xyz/styles/main.css">
 <link rel="alternate" type="application/atom+xml" title="面向切片编程高级应用与源码分析 | 河捉贝 - Atom Feed" href="https://hezb.xyz/atom.xml">
@@ -46,7 +46,7 @@ Target
       <div class="main-content">
         <div class="site-header">
   <a href="https://hezb.xyz">
-  <img class="avatar" src="https://hezb.xyz/images/avatar.png?v=1642520235353" alt="">
+  <img class="avatar" src="https://hezb.xyz/images/avatar.png?v=1642602736512" alt="">
   </a>
   <h1 class="site-title">
     河捉贝
@@ -250,9 +250,9 @@ public class LogUtils {
 脏读：⼀个线程中的事务读到了另外⼀个线程中未提交的数据<br>
 不可重复读：⼀个线程中的事务读到了另外⼀个线程中已经提交的数据<br>
 幻读：⼀个线程中的事务读到了另外⼀个线程中已经提交的新增或删除数据</p>
-<p>四种隔离界别<br>
-串行化：可避免脏读、不可重复读、幻读情况的发⽣<br>
-可重复读：可避免脏读、不可重复读情况的发⽣<br>
+<p>四种隔离级别<br>
+串行化：可避免脏读、不可重复读、幻读情况<br>
+可重复读：可避免脏读、不可重复读情况<br>
 读已提交：可避免脏读<br>
 读未提交：无法保证</p>
 <p>注意：级别依次升⾼，效率依次降低</p>

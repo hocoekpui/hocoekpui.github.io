@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://hezb.xyz</id>
     <title>河捉贝</title>
-    <updated>2022-01-18T15:43:53.483Z</updated>
+    <updated>2022-01-19T14:32:52.251Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://hezb.xyz"/>
     <link rel="self" href="https://hezb.xyz/atom.xml"/>
@@ -159,9 +159,9 @@ public class LogUtils {
 脏读：⼀个线程中的事务读到了另外⼀个线程中未提交的数据<br>
 不可重复读：⼀个线程中的事务读到了另外⼀个线程中已经提交的数据<br>
 幻读：⼀个线程中的事务读到了另外⼀个线程中已经提交的新增或删除数据</p>
-<p>四种隔离界别<br>
-串行化：可避免脏读、不可重复读、幻读情况的发⽣<br>
-可重复读：可避免脏读、不可重复读情况的发⽣<br>
+<p>四种隔离级别<br>
+串行化：可避免脏读、不可重复读、幻读情况<br>
+可重复读：可避免脏读、不可重复读情况<br>
 读已提交：可避免脏读<br>
 读未提交：无法保证</p>
 <p>注意：级别依次升⾼，效率依次降低</p>
@@ -976,42 +976,6 @@ private Map&lt;String, String&gt; map;
 }
 </code></pre>
 <p>至此，我们可以通过动态代理工厂获取代理对象，并对委托方法进行增强，从而实现面向切面编程</p>
-]]></content>
-    </entry>
-    <entry>
-        <title type="html"><![CDATA[如何高效准备简历和面试]]></title>
-        <id>https://hezb.xyz/post/ru-he-gao-xiao-zhun-bei-jian-li-he-mian-shi/</id>
-        <link href="https://hezb.xyz/post/ru-he-gao-xiao-zhun-bei-jian-li-he-mian-shi/">
-        </link>
-        <updated>2021-12-19T15:06:11.000Z</updated>
-        <content type="html"><![CDATA[<h1 id="容易被忽视的简历长啥样">容易被忽视的简历长啥样</h1>
-<p>第一个，简历样式</p>
-<p>不要黑白分明，但也别花里胡哨</p>
-<p>第二个，文案水平</p>
-<p>流水账，无突出重点</p>
-<h1 id="简历应该怎么改">简历应该怎么改</h1>
-<p>第一步，删除不必要的信息</p>
-<p>比如：身份证号、身高体重、籍贯老家、年龄、性别、婚否、政治面貌、大学主修课名称、精通或熟练字眼</p>
-<p>第二步，丰富吸引面试官的内容</p>
-<p>比如：做过什么，会做什么，优化过什么，学过什么，分享过什么</p>
-<p>简历修改需要依据一个法则：S.T.A.R，它分别代表以下含义</p>
-<p>Situation 项目背景、Task 项目任务、Action 工作职责、Result 工作结果</p>
-<p>在根据法则描述任务和实际行动的时候，可灵活视情况合并项目任务与工作职责</p>
-<h1 id="项目经历的挑选">项目经历的挑选</h1>
-<p>对于项目经历，挑有什么特点的项目来写呢</p>
-<p>首先是公司级影响海量用户数据的核心业务，其次是存在一定技术难度的项目，最后才是工作量大的项目，互联网公司注重结果导向，如何又快又好的完成项目才是公司看重的</p>
-<p>万一没有好的项目经验怎么办呢</p>
-<figure data-type="image" tabindex="1"><img src="https://hezb.xyz/post-images/1639928585296.png" alt="" loading="lazy"></figure>
-<h1 id="如何提高面试成功率">如何提高面试成功率</h1>
-<p>第一项，自我介绍</p>
-<p>记住要打破传统模式，简历上已有的信息无需重复，说一些他不知道且会感兴趣的东西</p>
-<figure data-type="image" tabindex="2"><img src="https://hezb.xyz/post-images/1640009383413.png" alt="" loading="lazy"></figure>
-<p>第二项，表达方式</p>
-<p>一方面记得要有底气，另一方面，在被面试官追问或者质疑的时候不要激烈争辩，毕竟面试是个双选的过程</p>
-<p>第三项，未雨绸缪</p>
-<p>将面试官大概会问的常规性问题都提前想想要从哪几方面去回答，心里有个底，另外回答问题的时候注意突出思考和学习潜力，比如用些关键词：我认为，我想可以这样，我会去学习等</p>
-<p>第四项，保持冷静</p>
-<p>若果面试官总是打断并连续发问，大可能是在压力面试观察你的抗压能力，此时应保持冷静，争取对答如流</p>
 ]]></content>
     </entry>
     <entry>
