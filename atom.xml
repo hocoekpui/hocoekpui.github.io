@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://hezb.xyz</id>
     <title>河捉贝</title>
-    <updated>2022-01-19T14:32:52.251Z</updated>
+    <updated>2022-01-19T14:41:54.914Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://hezb.xyz"/>
     <link rel="self" href="https://hezb.xyz/atom.xml"/>
@@ -85,7 +85,7 @@
 &lt;/aop:config&gt;
 </code></pre>
 <p>拓展：</p>
-<p>切入点表达式格式：访问修饰符 返回值 包名.类名.⽅法名(参数列表)，例如：全通配方式：* <em>..</em>.*(..)<br>
+<p>切入点表达式格式：访问修饰符 返回值 包名.类名.⽅法名(参数列表)，例如：全通配方式：* *..*.*(..)<br>
 其中访问修饰符可以忽略，返回值可用 * 表示任意返回值，包名可用 .. 表示当前包及其子包，参数列表对于基本类型可直接使用具体类型，引用类型必须写全限定名称，也可用 .. 标识有无参数均可</p>
 <p>环绕通知：框架提供的⼀种可以通过编码的⽅式，控制增强代码何时执⾏的通知类型</p>
 <h2 id="配置与注解组合配置">配置与注解组合配置</h2>
