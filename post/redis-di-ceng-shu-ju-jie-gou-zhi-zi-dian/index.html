@@ -1,0 +1,297 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Redis底层数据结构之字典 | 河捉贝</title>
+<link rel="shortcut icon" href="https://hezb.xyz/favicon.ico?v=1645348401999">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hezb.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Redis底层数据结构之字典 | 河捉贝 - Atom Feed" href="https://hezb.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="什么是是字典
+字典是哈希对象的实现方式之一，是一种用于保存键值对的抽象数据结构
+随着数据量的增加，它的性能经常会收到哈希冲突和重新散列开销的影响
+什么是哈希冲突
+当一个键值对的键经过哈希函数计算并取模后，就能得到该键值对对应的数组元素位置；..." />
+    <meta name="keywords" content="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://hezb.xyz">
+  <img class="avatar" src="https://hezb.xyz/images/avatar.png?v=1645348401999" alt="">
+  </a>
+  <h1 class="site-title">
+    河捉贝
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Redis底层数据结构之字典
+            </h2>
+            <div class="post-info">
+              <span>
+                2022-02-03
+              </span>
+              <span>
+                7 min read
+              </span>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <h1 id="什么是是字典">什么是是字典</h1>
+<p>字典是哈希对象的实现方式之一，是一种用于保存键值对的抽象数据结构</p>
+<p>随着数据量的增加，它的性能经常会收到哈希冲突和重新散列开销的影响</p>
+<h1 id="什么是哈希冲突">什么是哈希冲突</h1>
+<p>当一个键值对的键经过哈希函数计算并取模后，就能得到该键值对对应的数组元素位置；由于键空间会大于哈希表空间，这就导致在用哈希函数把键映射到哈希表空间时，不可避免地会出现不同的键被映射到数组的同一个位置上，这就是常说的哈希冲突</p>
+<p>针对哈希冲突，缓存采用了链式哈希的解决方案</p>
+<h1 id="链式哈希的设计与实现">链式哈希的设计与实现</h1>
+<figure data-type="image" tabindex="1"><img src="https://hezb.xyz/post-images/1643886133656.jpeg" alt="" loading="lazy"></figure>
+<p>所谓的链式哈希，就是将映射到同一桶中的哈希表节点连接起来，以下是哈希表的定义</p>
+<pre><code class="language-c">typedef struct dictht {
+    dictEntry **table;
+    unsigned long size;
+    unsigned long sizemask;
+    unsigned long used;
+} dictht;    
+</code></pre>
+<p>在哈希节点的结构设计中，除了包含指向键值的指针，还包含了指向下一个哈希项的指针</p>
+<pre><code class="language-c">  typedef struct dictEntry {
+      void *key; 
+      union {     
+          void* val;    
+          uint64_t u64;  
+          int64_t s64;       
+          double d;  
+      } v;   
+      struct dictEntry *next; 
+  } dictEntry;    
+</code></pre>
+<p>其中还有一个值得注意的地方，当值为整数或双精度浮点数时，由于其本身就是 64 位，就可以不用指针指向了，而是可以直接存在键值对的结构体中，这样就避免了再用一个指针，从而节省了内存空间</p>
+<h1 id="什么是重新散列">什么是重新散列</h1>
+<p>为了让哈希表的负载因子（哈希表节点数量 / 哈希表大小）维持在一个合理的范围之内，当哈希表保存的键值对数量太多或者太少时，程序需要对哈希表的大小进行相应的扩容或者收缩，这个过程称为重新散列</p>
+<p>字典设计结构大概如下，主要包含两个哈希表与一个索引值</p>
+<pre><code class="language-c">typedef struct dict { 
+    …  
+    dictht ht[2];
+    long rehashidx;
+    … 
+} dict;             
+</code></pre>
+<p>重新散列的基本思路：为备用表分配空间（首个大于等于已用节点数量的 2ⁿ）、将主表的节点重新散列到备用表上、将备用表设置为主表并重置备用表的大小</p>
+<figure data-type="image" tabindex="2"><img src="https://hezb.xyz/post-images/1643886235291.png" alt="" loading="lazy"></figure>
+<h1 id="重新散列的触发条件">重新散列的触发条件</h1>
+<p>扩容操作触发条件</p>
+<ul>
+<li>更新哈希表后负载因子 ≥ 1 / 5</li>
+</ul>
+<p>对于扩容操作场景触发条件有点特殊，当 1 ≤ 负载因子＜5时，还会再根据 dict_can_resize 变量的值判断是否可以进行扩容，更新这个变量值的方法有两个</p>
+<pre><code class="language-c">void dictEnableResize(void) {  
+    dict_can_resize = 1;
+}  
+
+void dictDisableResize(void) {  
+    dict_can_resize = 0; 
+}              
+</code></pre>
+<p>​<br>
+很显然这两个方法的作用就是启动和禁止执行重新散列，再往上一看，看看调用方是谁</p>
+<pre><code class="language-c">void updateDictResizePolicy(void) { 
+    if (server.rdb_child_pid == -1 &amp;&amp; server.aof_child_pid == -1)   
+        dictEnableResize();   
+    else       
+        dictDisableResize(); 
+}      
+</code></pre>
+<p>阅读源码得知，如果当前没有持久化的子进程则允许重新散列，因为在备份过程中会创建当前服务器进程的子进程，而大多数的操作系统都采用了写时复制技术来优化子进程的使用效率，所以在子进程存在期间，服务器会提高执行扩展操作所需的负载因子，从而尽可能地避免在子进程存在期间进行哈希表扩展操作，这可以避免不必要的内存写入操作，最大限度地节约内存</p>
+<p>收缩操作触发条件</p>
+<ul>
+<li>更新哈希表后负载因子 &lt; 0.1</li>
+</ul>
+<h1 id="渐进式重新散列">渐进式重新散列</h1>
+<p>实际上重新散列不是一次性、集中式地完成的，而是分多次、渐进式地完成的</p>
+<p>假设哈希表中有一千万个键值对，一次性迁移会导致服务器在一段时间内停止服务</p>
+<p>实现渐进式重新散列有一个关键方法，输入参数有全局哈希表和需要进行键拷贝的桶数量</p>
+<pre><code class="language-c"> int dictRehash( dict *d, int n ) { 
+     /*空桶检查阈值*/ 
+     int empty_visits = n * 10; 
+     /*主循环，按照桶粒度拷贝数据*/ 
+     while ( n-- &amp;&amp; d-&gt;ht[0].used != 0 ){   
+         while ( d-&gt;ht[0].table[d-&gt;rehashidx] == NULL ) {  
+             /*重新散列时候不会一直递增索引值进行检查，尽可能减少主线程处理其他请求*/    
+             if ( --empty_visits == 0 ) return(1);   
+         }        
+         /*获得哈希表中哈希项*/
+         de = d-&gt;ht[0].table[d-&gt;rehashidx];   
+         while ( de ) {     
+             uint64_t h;    
+             /*获得同一桶中的下一个哈希项*/  
+             nextde = de-&gt;next;         
+             /*计算当前哈希项在备份表中桶的位置*/  
+             h = dictHashKey( d, de-&gt;key ) &amp; d-&gt;ht[1].sizemask; 
+             /*将当前哈希项添加到备份表对应桶的位置*/      
+             de-&gt;next = d-&gt;ht[1].table[h];      
+             d-&gt;ht[1].table[h] = de;         
+             /*维护两个哈希表的节点数量*/      
+             d-&gt;ht[0].used--;         
+             d-&gt;ht[1].used++;       
+             /*指向下一个哈希项*/     
+             de = nextde;      
+         }     
+         /*如果当前哈希桶没有元素了就值为空*/    
+         d-&gt;ht[0].table[d-&gt;rehashidx] = NULL;     
+         /*散列索引值加一，下一次迁移下一个哈希桶中的元素*/  
+         d-&gt;rehashidx++;  
+     }   
+     /*判断主哈希表的键值对是否已经迁移完成*/
+     if ( d-&gt;ht[0].used == 0 ) { 
+         /*释放主哈希表的内存空间*    
+         zfree(d-&gt;ht[0].table);
+         /*主哈希表指针指向备份表，备份表成为主哈希表*/  
+         d-&gt;ht[0] = d-&gt;ht[1];  
+         /*重置备份表大小为零*/    
+         _dictReset( &amp;d-&gt;ht[1] );       
+         /*将散列索引值重置，表示散列已经结束*/    
+         d-&gt;rehashidx = -1;    
+         return(0);  
+     }  
+     return(1); 
+ }        
+</code></pre>
+<p>以上方法将会在键值对更新或者查询的方法内部调用</p>
+<pre><code class="language-c">static void _dictRehashStep(dict *d) {  
+    /*每次只会迁移一个哈希桶中的键值对*/  
+    if (d-&gt;iterators == 0)
+        dictRehash(d,1);
+}       
+</code></pre>
+<p>在进行渐进式重新散列的过程中，字典会同时使用两个哈希表，所以在渐进式重新散列期间，字典的更新操作会在两个哈希表上进行，例如要在字典里面查找一个键的话，程序会先在主哈希表里面进行查找，如果没找到的话，就会继续到备份哈希表里面进行查找，诸如此类；另外，在渐进式重新散列执行期间，新添加到字典的键值对一律会被保存到备份哈希表里面，而主哈希表则不再进行任何添加操作，这一措施保证了主哈希表的键值对数量会只减不增，并随着键值对的迁移最终变成空表</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li><a href="#%E4%BB%80%E4%B9%88%E6%98%AF%E6%98%AF%E5%AD%97%E5%85%B8">什么是是字典</a></li>
+<li><a href="#%E4%BB%80%E4%B9%88%E6%98%AF%E5%93%88%E5%B8%8C%E5%86%B2%E7%AA%81">什么是哈希冲突</a></li>
+<li><a href="#%E9%93%BE%E5%BC%8F%E5%93%88%E5%B8%8C%E7%9A%84%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0">链式哈希的设计与实现</a></li>
+<li><a href="#%E4%BB%80%E4%B9%88%E6%98%AF%E9%87%8D%E6%96%B0%E6%95%A3%E5%88%97">什么是重新散列</a></li>
+<li><a href="#%E9%87%8D%E6%96%B0%E6%95%A3%E5%88%97%E7%9A%84%E8%A7%A6%E5%8F%91%E6%9D%A1%E4%BB%B6">重新散列的触发条件</a></li>
+<li><a href="#%E6%B8%90%E8%BF%9B%E5%BC%8F%E9%87%8D%E6%96%B0%E6%95%A3%E5%88%97">渐进式重新散列</a></li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://hezb.xyz/post/redis-di-ceng-shu-ju-jie-gou-zhi-jian-dan-dong-tai-zi-fu-chuan/">
+              <h3 class="post-title">
+                Redis底层数据结构之简单动态字符串
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  
+  <a class="rss" href="https://hezb.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

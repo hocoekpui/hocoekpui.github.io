@@ -1,0 +1,603 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Redis常见数据结构与常用命令 | 河捉贝</title>
+<link rel="shortcut icon" href="https://hezb.xyz/favicon.ico?v=1645348401999">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hezb.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Redis常见数据结构与常用命令 | 河捉贝 - Atom Feed" href="https://hezb.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="常见数据结构
+string，list，set，zset，hash，bitmap，geo ...
+字符串常用操作命令
+
+
+
+命令
+命令格式
+描述
+
+
+
+
+set
+set key value [EX seconds] [PX milliseco..." />
+    <meta name="keywords" content="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://hezb.xyz">
+  <img class="avatar" src="https://hezb.xyz/images/avatar.png?v=1645348401999" alt="">
+  </a>
+  <h1 class="site-title">
+    河捉贝
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Redis常见数据结构与常用命令
+            </h2>
+            <div class="post-info">
+              <span>
+                2022-02-03
+              </span>
+              <span>
+                5 min read
+              </span>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <h1 id="常见数据结构">常见数据结构</h1>
+<p>string，list，set，zset，hash，bitmap，geo ...</p>
+<h1 id="字符串常用操作命令">字符串常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>set</td>
+<td>set key value [EX seconds] [PX milliseconds] [NX|XX]</td>
+<td>赋值</td>
+</tr>
+<tr>
+<td>get</td>
+<td>get key</td>
+<td>取值</td>
+</tr>
+<tr>
+<td>getset</td>
+<td>getset key value</td>
+<td>取值并赋值</td>
+</tr>
+<tr>
+<td>setnx</td>
+<td>setnx key value</td>
+<td>不存在则赋值</td>
+</tr>
+<tr>
+<td>append</td>
+<td>append key value</td>
+<td>追加</td>
+</tr>
+<tr>
+<td>strlen</td>
+<td>strlen key</td>
+<td>获取字符串长度</td>
+</tr>
+<tr>
+<td>incr</td>
+<td>incr key</td>
+<td>递增数字</td>
+</tr>
+<tr>
+<td>incrby</td>
+<td>incrby key increment</td>
+<td>增加指定的整数</td>
+</tr>
+<tr>
+<td>decr</td>
+<td>decr key</td>
+<td>递减数字</td>
+</tr>
+<tr>
+<td>decrby</td>
+<td>decrby key decrement</td>
+<td>减少指定的整数</td>
+</tr>
+</tbody>
+</table>
+<h1 id="列表常用操作命令">列表常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lpush</td>
+<td>lpush value [value ...]</td>
+<td>从左侧插入列表</td>
+</tr>
+<tr>
+<td>lpop</td>
+<td>lpop key</td>
+<td>从列表左侧取出</td>
+</tr>
+<tr>
+<td>rpush</td>
+<td>rpush key value [value ...]</td>
+<td>从右侧插入列表</td>
+</tr>
+<tr>
+<td>rpop</td>
+<td>rpop key</td>
+<td>从列表右侧取出</td>
+</tr>
+<tr>
+<td>lpushx</td>
+<td>lpushx key value</td>
+<td>将值插入到列表头部</td>
+</tr>
+<tr>
+<td>rpushx</td>
+<td>rpushx key value</td>
+<td>将值插入到列表尾部</td>
+</tr>
+<tr>
+<td>blpop</td>
+<td>blpop key timeout</td>
+<td>从列表左侧取出，当列表为空时阻塞，可以设置最大阻塞时 间，单位为秒</td>
+</tr>
+<tr>
+<td>brpop</td>
+<td>brpop key timeout</td>
+<td>从列表右侧取出，当列表为空时阻塞，可以设置最大阻塞时 间，单位为秒</td>
+</tr>
+<tr>
+<td>llen</td>
+<td>llen key</td>
+<td>获得列表中元素个数</td>
+</tr>
+<tr>
+<td>lindex</td>
+<td>lindex key index</td>
+<td>获得列表中指定下标的元素</td>
+</tr>
+<tr>
+<td>lrange</td>
+<td>lrange key start end</td>
+<td>返回列表中指定区间的元素</td>
+</tr>
+<tr>
+<td>lrem</td>
+<td>lrem key count value</td>
+<td>删除列表中与指定值相等的元素 当count &gt; 0时， 从列表左边开始删除；当count &lt; 0时，从列表右边开始删除;当count = 0时，删除所有与指定值相等的元素</td>
+</tr>
+<tr>
+<td>lset</td>
+<td>lset key index value</td>
+<td>将列表指定位置的元素设置成指定值</td>
+</tr>
+<tr>
+<td>ltrim</td>
+<td>ltrim key start end</td>
+<td>对列表进行修剪</td>
+</tr>
+<tr>
+<td>rpoplpush</td>
+<td>rpoplpush src des</td>
+<td>从 src 列表右侧弹出并插入到 des 列表左侧</td>
+</tr>
+<tr>
+<td>brpoplpush</td>
+<td>brpoplpush src des</td>
+<td>从 src 列表右侧弹出并插入到 des 列表左侧，会阻塞</td>
+</tr>
+<tr>
+<td>linsert</td>
+<td>linsert key BEFORE/AFTER pivot value</td>
+<td>将值插入到列表插入到指定值之前或之后</td>
+</tr>
+</tbody>
+</table>
+<h1 id="集合常用操作命令">集合常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令名称</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sadd</td>
+<td>sadd key member [member ...]</td>
+<td>为集合添加新成员</td>
+</tr>
+<tr>
+<td>srem</td>
+<td>sadd key member [member ...]</td>
+<td>删除集合中指定成员</td>
+</tr>
+<tr>
+<td>smembers</td>
+<td>smembers key</td>
+<td>获得集合中所有元素</td>
+</tr>
+<tr>
+<td>spop</td>
+<td>spop key [count]</td>
+<td>返回集合中一个随机元素，并将该元素删除</td>
+</tr>
+<tr>
+<td>srandmember</td>
+<td>srandmember key [count]</td>
+<td>返回集合中一个随机元素，不会删除该元素</td>
+</tr>
+<tr>
+<td>scard</td>
+<td>scrad key</td>
+<td>获得集合中元素的数量</td>
+</tr>
+<tr>
+<td>sismember</td>
+<td>sismember key member</td>
+<td>判断元素是否在集合内</td>
+</tr>
+<tr>
+<td>sinter</td>
+<td>sinter key [key ...]</td>
+<td>求多集合的交集</td>
+</tr>
+<tr>
+<td>sdiff</td>
+<td>sdiff key [key ...]</td>
+<td>求多集合的差集</td>
+</tr>
+<tr>
+<td>sunion</td>
+<td>sunion key [key ...]</td>
+<td>求多集合的并集</td>
+</tr>
+</tbody>
+</table>
+<h1 id="有序集合常用操作命令">有序集合常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令名称</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>zadd</td>
+<td>zadd key [NX|XX] [CH] [INCR] score member [score member ...]</td>
+<td>为有序集合添加新成员</td>
+</tr>
+<tr>
+<td>zrem</td>
+<td>zrem key member [member ...]</td>
+<td>删除有序集合中指定成员</td>
+</tr>
+<tr>
+<td>zcard</td>
+<td>zcard key</td>
+<td>获得有序集合中的元素数量</td>
+</tr>
+<tr>
+<td>zcount</td>
+<td>zcount key min max</td>
+<td>返回集合中score值在 [min,max] 区间 的元素数量</td>
+</tr>
+<tr>
+<td>zincrby</td>
+<td>zincrby key increment member</td>
+<td>在集合的member分值上加increment</td>
+</tr>
+<tr>
+<td>zscore</td>
+<td>zsorce key member</td>
+<td>获得集合中member的分值</td>
+</tr>
+<tr>
+<td>zrank</td>
+<td>zrank key member</td>
+<td>获得集合中member的排名（按分值从 小到大）</td>
+</tr>
+<tr>
+<td>zrevrank</td>
+<td>zrevrank key member</td>
+<td>获得集合中member的排名（按分值从 大到小）</td>
+</tr>
+<tr>
+<td>zrange</td>
+<td>zrange key start stop [withscores]</td>
+<td>获得集合中指定区间成员，按分数递增 排序</td>
+</tr>
+<tr>
+<td>zrevrange</td>
+<td>zrevrange key start stop [withscores]</td>
+<td>获得集合中指定区间成员，按分数递减 排序</td>
+</tr>
+</tbody>
+</table>
+<h1 id="字典常用操作命令">字典常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令名称</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>hset</td>
+<td>hset key field value</td>
+<td>赋值</td>
+</tr>
+<tr>
+<td>hmset</td>
+<td>hset key field value [field value ...]</td>
+<td>批量赋值</td>
+</tr>
+<tr>
+<td>hsetnx</td>
+<td>hsetnx key field value</td>
+<td>赋值[不存在]</td>
+</tr>
+<tr>
+<td>hexists</td>
+<td>hexists key field</td>
+<td>查看值是否存在</td>
+</tr>
+<tr>
+<td>hget</td>
+<td>hget key field</td>
+<td>获取一个字段值</td>
+</tr>
+<tr>
+<td>hmget</td>
+<td>hget key field [field ...]</td>
+<td>获取多个字段值</td>
+</tr>
+<tr>
+<td>hgetall</td>
+<td>hgetall key</td>
+<td>获取所有字段值</td>
+</tr>
+<tr>
+<td>hdel</td>
+<td>hdel key field [field ...]</td>
+<td>删除指定字段</td>
+</tr>
+<tr>
+<td>hincrby</td>
+<td>hincrby key field increment</td>
+<td>指定字段自增</td>
+</tr>
+<tr>
+<td>hlen</td>
+<td>hlen key</td>
+<td>获得字段数量</td>
+</tr>
+</tbody>
+</table>
+<h1 id="位图常用操作命令">位图常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令名称</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>setbit</td>
+<td>setbit key offset value</td>
+<td>设置key在offset处的bit值</td>
+</tr>
+<tr>
+<td>getbit</td>
+<td>getbit key offset</td>
+<td>获得key在offset处的bit值</td>
+</tr>
+<tr>
+<td>bitcount</td>
+<td>bitcount key [start end]</td>
+<td>获得key的bit位为1的个数</td>
+</tr>
+<tr>
+<td>bitpos</td>
+<td>bitpos key bit [start] [end]</td>
+<td>返回第一个被设置为bit值的索引值</td>
+</tr>
+<tr>
+<td>bitop</td>
+<td>bitop operation destkey key [key ...]</td>
+<td>对多个key 进行逻辑运算后存入destkey 中</td>
+</tr>
+</tbody>
+</table>
+<h1 id="地理位置常用操作命令">地理位置常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令名称</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>geoadd</td>
+<td>geoadd key longitude latitude member [longitude latitude member ...]</td>
+<td>添加地理坐标</td>
+</tr>
+<tr>
+<td>geohash</td>
+<td>geohash key member [member ...]</td>
+<td>返回标准的地理位置哈希串</td>
+</tr>
+<tr>
+<td>geopos</td>
+<td>geopos key member [member ...]</td>
+<td>返回成员经纬度</td>
+</tr>
+<tr>
+<td>geodist</td>
+<td>geodist key member1 member2 [unit]</td>
+<td>计算成员间距离</td>
+</tr>
+<tr>
+<td>georadiusbymember</td>
+<td>georadiusbymember key member radius m|km|ft|mi [withcoord] [withdist] [withhash] [count number] [asc|desc]</td>
+<td>根据成员查找附近的成员</td>
+</tr>
+</tbody>
+</table>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li><a href="#%E5%B8%B8%E8%A7%81%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84">常见数据结构</a></li>
+<li><a href="#%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E5%91%BD%E4%BB%A4">字符串常用操作命令</a></li>
+<li><a href="#%E5%88%97%E8%A1%A8%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E5%91%BD%E4%BB%A4">列表常用操作命令</a></li>
+<li><a href="#%E9%9B%86%E5%90%88%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E5%91%BD%E4%BB%A4">集合常用操作命令</a></li>
+<li><a href="#%E6%9C%89%E5%BA%8F%E9%9B%86%E5%90%88%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E5%91%BD%E4%BB%A4">有序集合常用操作命令</a></li>
+<li><a href="#%E5%AD%97%E5%85%B8%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E5%91%BD%E4%BB%A4">字典常用操作命令</a></li>
+<li><a href="#%E4%BD%8D%E5%9B%BE%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E5%91%BD%E4%BB%A4">位图常用操作命令</a></li>
+<li><a href="#%E5%9C%B0%E7%90%86%E4%BD%8D%E7%BD%AE%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C%E5%91%BD%E4%BB%A4">地理位置常用操作命令</a></li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://hezb.xyz/post/mian-xiang-qie-pian-bian-cheng-gao-ji-ying-yong-yu-yuan-ma-fen-xi/">
+              <h3 class="post-title">
+                面向切片编程高级应用与源码分析
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  
+  <a class="rss" href="https://hezb.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://hezb.xyz</id>
     <title>河捉贝</title>
-    <updated>2022-01-19T14:41:54.914Z</updated>
+    <updated>2022-02-20T09:15:22.093Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://hezb.xyz"/>
     <link rel="self" href="https://hezb.xyz/atom.xml"/>
@@ -10,6 +10,675 @@
     <logo>https://hezb.xyz/images/avatar.png</logo>
     <icon>https://hezb.xyz/favicon.ico</icon>
     <rights>All rights reserved 2022, 河捉贝</rights>
+    <entry>
+        <title type="html"><![CDATA[Redis底层数据结构之字典]]></title>
+        <id>https://hezb.xyz/post/redis-di-ceng-shu-ju-jie-gou-zhi-zi-dian/</id>
+        <link href="https://hezb.xyz/post/redis-di-ceng-shu-ju-jie-gou-zhi-zi-dian/">
+        </link>
+        <updated>2022-02-03T10:10:51.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="什么是是字典">什么是是字典</h1>
+<p>字典是哈希对象的实现方式之一，是一种用于保存键值对的抽象数据结构</p>
+<p>随着数据量的增加，它的性能经常会收到哈希冲突和重新散列开销的影响</p>
+<h1 id="什么是哈希冲突">什么是哈希冲突</h1>
+<p>当一个键值对的键经过哈希函数计算并取模后，就能得到该键值对对应的数组元素位置；由于键空间会大于哈希表空间，这就导致在用哈希函数把键映射到哈希表空间时，不可避免地会出现不同的键被映射到数组的同一个位置上，这就是常说的哈希冲突</p>
+<p>针对哈希冲突，缓存采用了链式哈希的解决方案</p>
+<h1 id="链式哈希的设计与实现">链式哈希的设计与实现</h1>
+<figure data-type="image" tabindex="1"><img src="https://hezb.xyz/post-images/1643886133656.jpeg" alt="" loading="lazy"></figure>
+<p>所谓的链式哈希，就是将映射到同一桶中的哈希表节点连接起来，以下是哈希表的定义</p>
+<pre><code class="language-c">typedef struct dictht {
+    dictEntry **table;
+    unsigned long size;
+    unsigned long sizemask;
+    unsigned long used;
+} dictht;    
+</code></pre>
+<p>在哈希节点的结构设计中，除了包含指向键值的指针，还包含了指向下一个哈希项的指针</p>
+<pre><code class="language-c">  typedef struct dictEntry {
+      void *key; 
+      union {     
+          void* val;    
+          uint64_t u64;  
+          int64_t s64;       
+          double d;  
+      } v;   
+      struct dictEntry *next; 
+  } dictEntry;    
+</code></pre>
+<p>其中还有一个值得注意的地方，当值为整数或双精度浮点数时，由于其本身就是 64 位，就可以不用指针指向了，而是可以直接存在键值对的结构体中，这样就避免了再用一个指针，从而节省了内存空间</p>
+<h1 id="什么是重新散列">什么是重新散列</h1>
+<p>为了让哈希表的负载因子（哈希表节点数量 / 哈希表大小）维持在一个合理的范围之内，当哈希表保存的键值对数量太多或者太少时，程序需要对哈希表的大小进行相应的扩容或者收缩，这个过程称为重新散列</p>
+<p>字典设计结构大概如下，主要包含两个哈希表与一个索引值</p>
+<pre><code class="language-c">typedef struct dict { 
+    …  
+    dictht ht[2];
+    long rehashidx;
+    … 
+} dict;             
+</code></pre>
+<p>重新散列的基本思路：为备用表分配空间（首个大于等于已用节点数量的 2ⁿ）、将主表的节点重新散列到备用表上、将备用表设置为主表并重置备用表的大小</p>
+<figure data-type="image" tabindex="2"><img src="https://hezb.xyz/post-images/1643886235291.png" alt="" loading="lazy"></figure>
+<h1 id="重新散列的触发条件">重新散列的触发条件</h1>
+<p>扩容操作触发条件</p>
+<ul>
+<li>更新哈希表后负载因子 ≥ 1 / 5</li>
+</ul>
+<p>对于扩容操作场景触发条件有点特殊，当 1 ≤ 负载因子＜5时，还会再根据 dict_can_resize 变量的值判断是否可以进行扩容，更新这个变量值的方法有两个</p>
+<pre><code class="language-c">void dictEnableResize(void) {  
+    dict_can_resize = 1;
+}  
+
+void dictDisableResize(void) {  
+    dict_can_resize = 0; 
+}              
+</code></pre>
+<p>​<br>
+很显然这两个方法的作用就是启动和禁止执行重新散列，再往上一看，看看调用方是谁</p>
+<pre><code class="language-c">void updateDictResizePolicy(void) { 
+    if (server.rdb_child_pid == -1 &amp;&amp; server.aof_child_pid == -1)   
+        dictEnableResize();   
+    else       
+        dictDisableResize(); 
+}      
+</code></pre>
+<p>阅读源码得知，如果当前没有持久化的子进程则允许重新散列，因为在备份过程中会创建当前服务器进程的子进程，而大多数的操作系统都采用了写时复制技术来优化子进程的使用效率，所以在子进程存在期间，服务器会提高执行扩展操作所需的负载因子，从而尽可能地避免在子进程存在期间进行哈希表扩展操作，这可以避免不必要的内存写入操作，最大限度地节约内存</p>
+<p>收缩操作触发条件</p>
+<ul>
+<li>更新哈希表后负载因子 &lt; 0.1</li>
+</ul>
+<h1 id="渐进式重新散列">渐进式重新散列</h1>
+<p>实际上重新散列不是一次性、集中式地完成的，而是分多次、渐进式地完成的</p>
+<p>假设哈希表中有一千万个键值对，一次性迁移会导致服务器在一段时间内停止服务</p>
+<p>实现渐进式重新散列有一个关键方法，输入参数有全局哈希表和需要进行键拷贝的桶数量</p>
+<pre><code class="language-c"> int dictRehash( dict *d, int n ) { 
+     /*空桶检查阈值*/ 
+     int empty_visits = n * 10; 
+     /*主循环，按照桶粒度拷贝数据*/ 
+     while ( n-- &amp;&amp; d-&gt;ht[0].used != 0 ){   
+         while ( d-&gt;ht[0].table[d-&gt;rehashidx] == NULL ) {  
+             /*重新散列时候不会一直递增索引值进行检查，尽可能减少主线程处理其他请求*/    
+             if ( --empty_visits == 0 ) return(1);   
+         }        
+         /*获得哈希表中哈希项*/
+         de = d-&gt;ht[0].table[d-&gt;rehashidx];   
+         while ( de ) {     
+             uint64_t h;    
+             /*获得同一桶中的下一个哈希项*/  
+             nextde = de-&gt;next;         
+             /*计算当前哈希项在备份表中桶的位置*/  
+             h = dictHashKey( d, de-&gt;key ) &amp; d-&gt;ht[1].sizemask; 
+             /*将当前哈希项添加到备份表对应桶的位置*/      
+             de-&gt;next = d-&gt;ht[1].table[h];      
+             d-&gt;ht[1].table[h] = de;         
+             /*维护两个哈希表的节点数量*/      
+             d-&gt;ht[0].used--;         
+             d-&gt;ht[1].used++;       
+             /*指向下一个哈希项*/     
+             de = nextde;      
+         }     
+         /*如果当前哈希桶没有元素了就值为空*/    
+         d-&gt;ht[0].table[d-&gt;rehashidx] = NULL;     
+         /*散列索引值加一，下一次迁移下一个哈希桶中的元素*/  
+         d-&gt;rehashidx++;  
+     }   
+     /*判断主哈希表的键值对是否已经迁移完成*/
+     if ( d-&gt;ht[0].used == 0 ) { 
+         /*释放主哈希表的内存空间*    
+         zfree(d-&gt;ht[0].table);
+         /*主哈希表指针指向备份表，备份表成为主哈希表*/  
+         d-&gt;ht[0] = d-&gt;ht[1];  
+         /*重置备份表大小为零*/    
+         _dictReset( &amp;d-&gt;ht[1] );       
+         /*将散列索引值重置，表示散列已经结束*/    
+         d-&gt;rehashidx = -1;    
+         return(0);  
+     }  
+     return(1); 
+ }        
+</code></pre>
+<p>以上方法将会在键值对更新或者查询的方法内部调用</p>
+<pre><code class="language-c">static void _dictRehashStep(dict *d) {  
+    /*每次只会迁移一个哈希桶中的键值对*/  
+    if (d-&gt;iterators == 0)
+        dictRehash(d,1);
+}       
+</code></pre>
+<p>在进行渐进式重新散列的过程中，字典会同时使用两个哈希表，所以在渐进式重新散列期间，字典的更新操作会在两个哈希表上进行，例如要在字典里面查找一个键的话，程序会先在主哈希表里面进行查找，如果没找到的话，就会继续到备份哈希表里面进行查找，诸如此类；另外，在渐进式重新散列执行期间，新添加到字典的键值对一律会被保存到备份哈希表里面，而主哈希表则不再进行任何添加操作，这一措施保证了主哈希表的键值对数量会只减不增，并随着键值对的迁移最终变成空表</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Redis底层数据结构之简单动态字符串]]></title>
+        <id>https://hezb.xyz/post/redis-di-ceng-shu-ju-jie-gou-zhi-jian-dan-dong-tai-zi-fu-chuan/</id>
+        <link href="https://hezb.xyz/post/redis-di-ceng-shu-ju-jie-gou-zhi-jian-dan-dong-tai-zi-fu-chuan/">
+        </link>
+        <updated>2022-02-03T10:04:28.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="原生字符串实现缓存存在的问题">原生字符串实现缓存存在的问题</h1>
+<p>观察原生字符串的结构设计，它是一块连续的内存空间<br>
+<img src="https://hezb.xyz/post-images/1643882707590.png" alt="" loading="lazy"></p>
+<p>原生实现中，判断字符串结束的的依据是空字符，因此如果数据中包含结束符就会被截断，不满足保存二进制数据的需求</p>
+<p>其次是为了获取字符串长度或者寻找字符串结尾必须遍历整个字符串，以字符串追加函数为例，它先通过遍历字符串得到目标字符串的末尾，再通过遍历完成追加源字符串</p>
+<pre><code class="language-c">char *strcat(char *dest, const char *src) {
+    char *tmp = dest;     
+    while(*dest) dest++;  
+    while((*dest++ = *src++) != '\0' )    
+    return tmp;
+}     
+</code></pre>
+<p>除此之外，由于原生字符串不记录自身长度容易造成缓冲区溢出，举个栗子，假设有两个在内存中紧凑的字符串</p>
+<figure data-type="image" tabindex="1"><img src="https://hezb.xyz/post-images/1643882847292.png" alt="" loading="lazy"></figure>
+<p>此时如果一个程序员通过执行以下命令，想修改第一个字符串的值，但却忘了给它分配足够的内存空间，函数执行后将溢出到下一个字符串所在的空间中</p>
+<pre><code class="language-c">    strcat(s1, &quot;Cluster&quot;)
+</code></pre>
+<p>导致另外一个字符串保存的内容被修改了，如图所示</p>
+<figure data-type="image" tabindex="2"><img src="https://hezb.xyz/post-images/1643882875848.png" alt="" loading="lazy"></figure>
+<p>不仅如此，原生字符串的长度与底层数组长度存在关联性，因此每次增长或者缩短一个字符串，程序都要对保存该字符串的数组进行一次内存重分配操作</p>
+<p>由于内存重分配涉及到系统调用，因此如果频繁修改数据会对系统性能造成影响</p>
+<h1 id="简单动态字符串的结构设计">简单动态字符串的结构设计</h1>
+<p>简单动态字符串是字符串对象的实现方式之一，其结构设计如下所示</p>
+<pre><code class="language-c">struct sdshdr { 
+    ? len;  
+    ? alloc;  
+    unsigned char flags;   
+    char buf[]; };       
+</code></pre>
+<p>其本质还是字符数组，遵守字符串以空字符结尾的惯例，这样的好处是可以直接复用一部分函数库里的函数，但它是二进制安全的，因为他不再通过空白符判断字符串是否结束</p>
+<p>仍然以字符串追加函数为例，看简单动态字符串如何实现更高的操作效率</p>
+<pre><code class="language-c">sds sdscatlen(sds s, const void *t, size_t len) { 
+    size_t curlen = sdslen(s);  
+    s = sdsMakeRoomFor(s,len);  
+    if (s == NULL) return NULL;  
+    memcpy(s+curlen, t, len); 
+    sdssetlen(s, curlen+len);   
+    s[curlen+len] = '\0';   
+    return s; 
+}    
+</code></pre>
+<p>执行过程主要分为三个步骤</p>
+<ol>
+<li>首先根据目标字符串与源字符串的长度判断是否需要为目标字符串扩容</li>
+<li>保证了目标字符串的空间足够后，将源字符串追加到目标字符串</li>
+<li>最后更新目标字符串的长度</li>
+</ol>
+<p>简而言之，简单动态字符串通过记录字符数组的使用长度和分配空间大小，避免了字符串的遍历操作和缓冲区溢出，而且还减少了修改字符串时带来的内存重分配次数</p>
+<h1 id="简单动态字符串如何减少内存重分配次数">简单动态字符串如何减少内存重分配次数</h1>
+<p>为了避免操作原生字符串导致频繁内存重分配的缺陷，简单动态字符串通过未使用空间，实现了空间预分配和惰性空间释放两种优化策略</p>
+<p>空间预分配用于优化字符串增长操作：当对一个字符串修改并需要进行空间扩展时，程序不仅会分配修改所需的空间，还会分配额外的未使用空间</p>
+<p>额外分配的未使用空间数量由以下公式决定</p>
+<ul>
+<li>如果修改后字符串的长度 ＜ 1MB，程序会分配与长度一样的未使用空间</li>
+<li>如果修改后字符串的长度 ≥ 1MB，程序会分配 1MB 的未使用空间</li>
+</ul>
+<p>空间预分配用于优化字符串缩短操作：当对一个字符串修改并需要进行缩短时，程序并不立即使用内存重分配来回收多余的字节，为将来可能有的增长操作提供了优化</p>
+<h1 id="简单动态字符串如何节省内存">简单动态字符串如何节省内存</h1>
+<p>前面谈到其结构设计时，有一个名为字符串类型的元数据</p>
+<p>不同类型字符串区别在于字符数组长度和分配空间长度的数据类型不一样，之所以设计不同的字符串类型，其实是为了能灵活保存不同长度的字符串，从而有效节省内存空间</p>
+<p>以其中一种字符串类型为例</p>
+<pre><code class="language-c">struct __attribute__ ((__packed__)) sdshdr8 {   
+    uint8_t len; 
+    uint8_t alloc;   
+    unsigned char flags;
+    char buf[]; 
+};  
+</code></pre>
+<p>长度和分配空间属性类型都是 8 位无符号整型，各占用 1 个字节，所以这种类型能表示的字符数组长度不会超过 256 字节</p>
+<p>假设简单动态字符串的类型固定为最大的 “sdshdr64”，则字符串的长度与分配空间参数类型为 “uint64_t”，假设保存的字符串大小为 10 字节，而此时结构头中字符串的长度与分配空间本身就占用了 16 个字节，这样设计对内存并不友好</p>
+<p>除此之外，简单动态字符串还使用了专门的编译优化来节省内存空间</p>
+<pre><code class="language-c">    struct __attribute__ ((__packed__)) sdshdr8    
+</code></pre>
+<p>在刚刚介绍的结构类型定义中，结构声明关键字与类型之间有一串特殊的字符串，它的作用就是告诉编译器在编译的时候不要使用字节对齐的方式，而是采用紧凑的方式分配内存</p>
+<p>举个栗子方便理解</p>
+<pre><code class="language-c">#include &lt;stdio.h&gt;
+int main() { 
+struct s1 {   
+    char a;  
+    int b;  
+} ts1;   
+printf(&quot;%lu\n&quot;, sizeof(ts1));  
+return 0; 
+}      
+</code></pre>
+<p>众所周知，字符串类型占用 1 个字节，整形占用 4 个字节，但打印的结果是 8</p>
+<pre><code class="language-c">#include &lt;stdio.h&gt; 
+int main() {  
+struct __attribute__((packed)) s2{ 
+    char a;    
+    int b;
+} ts2; 
+printf(&quot;%lu\n&quot;, sizeof(ts2));  
+return 0; 
+}   
+</code></pre>
+<p>但是用 “<strong>attribute</strong> ((<strong>packed</strong>))” 属性定义结构体，打印结果则为 5</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Redis常见数据结构与常用命令]]></title>
+        <id>https://hezb.xyz/post/redis-chang-jian-shu-ju-jie-gou-yu-chang-yong-ming-ling/</id>
+        <link href="https://hezb.xyz/post/redis-chang-jian-shu-ju-jie-gou-yu-chang-yong-ming-ling/">
+        </link>
+        <updated>2022-02-03T09:59:58.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="常见数据结构">常见数据结构</h1>
+<p>string，list，set，zset，hash，bitmap，geo ...</p>
+<h1 id="字符串常用操作命令">字符串常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>set</td>
+<td>set key value [EX seconds] [PX milliseconds] [NX|XX]</td>
+<td>赋值</td>
+</tr>
+<tr>
+<td>get</td>
+<td>get key</td>
+<td>取值</td>
+</tr>
+<tr>
+<td>getset</td>
+<td>getset key value</td>
+<td>取值并赋值</td>
+</tr>
+<tr>
+<td>setnx</td>
+<td>setnx key value</td>
+<td>不存在则赋值</td>
+</tr>
+<tr>
+<td>append</td>
+<td>append key value</td>
+<td>追加</td>
+</tr>
+<tr>
+<td>strlen</td>
+<td>strlen key</td>
+<td>获取字符串长度</td>
+</tr>
+<tr>
+<td>incr</td>
+<td>incr key</td>
+<td>递增数字</td>
+</tr>
+<tr>
+<td>incrby</td>
+<td>incrby key increment</td>
+<td>增加指定的整数</td>
+</tr>
+<tr>
+<td>decr</td>
+<td>decr key</td>
+<td>递减数字</td>
+</tr>
+<tr>
+<td>decrby</td>
+<td>decrby key decrement</td>
+<td>减少指定的整数</td>
+</tr>
+</tbody>
+</table>
+<h1 id="列表常用操作命令">列表常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lpush</td>
+<td>lpush value [value ...]</td>
+<td>从左侧插入列表</td>
+</tr>
+<tr>
+<td>lpop</td>
+<td>lpop key</td>
+<td>从列表左侧取出</td>
+</tr>
+<tr>
+<td>rpush</td>
+<td>rpush key value [value ...]</td>
+<td>从右侧插入列表</td>
+</tr>
+<tr>
+<td>rpop</td>
+<td>rpop key</td>
+<td>从列表右侧取出</td>
+</tr>
+<tr>
+<td>lpushx</td>
+<td>lpushx key value</td>
+<td>将值插入到列表头部</td>
+</tr>
+<tr>
+<td>rpushx</td>
+<td>rpushx key value</td>
+<td>将值插入到列表尾部</td>
+</tr>
+<tr>
+<td>blpop</td>
+<td>blpop key timeout</td>
+<td>从列表左侧取出，当列表为空时阻塞，可以设置最大阻塞时 间，单位为秒</td>
+</tr>
+<tr>
+<td>brpop</td>
+<td>brpop key timeout</td>
+<td>从列表右侧取出，当列表为空时阻塞，可以设置最大阻塞时 间，单位为秒</td>
+</tr>
+<tr>
+<td>llen</td>
+<td>llen key</td>
+<td>获得列表中元素个数</td>
+</tr>
+<tr>
+<td>lindex</td>
+<td>lindex key index</td>
+<td>获得列表中指定下标的元素</td>
+</tr>
+<tr>
+<td>lrange</td>
+<td>lrange key start end</td>
+<td>返回列表中指定区间的元素</td>
+</tr>
+<tr>
+<td>lrem</td>
+<td>lrem key count value</td>
+<td>删除列表中与指定值相等的元素 当count &gt; 0时， 从列表左边开始删除；当count &lt; 0时，从列表右边开始删除;当count = 0时，删除所有与指定值相等的元素</td>
+</tr>
+<tr>
+<td>lset</td>
+<td>lset key index value</td>
+<td>将列表指定位置的元素设置成指定值</td>
+</tr>
+<tr>
+<td>ltrim</td>
+<td>ltrim key start end</td>
+<td>对列表进行修剪</td>
+</tr>
+<tr>
+<td>rpoplpush</td>
+<td>rpoplpush src des</td>
+<td>从 src 列表右侧弹出并插入到 des 列表左侧</td>
+</tr>
+<tr>
+<td>brpoplpush</td>
+<td>brpoplpush src des</td>
+<td>从 src 列表右侧弹出并插入到 des 列表左侧，会阻塞</td>
+</tr>
+<tr>
+<td>linsert</td>
+<td>linsert key BEFORE/AFTER pivot value</td>
+<td>将值插入到列表插入到指定值之前或之后</td>
+</tr>
+</tbody>
+</table>
+<h1 id="集合常用操作命令">集合常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令名称</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sadd</td>
+<td>sadd key member [member ...]</td>
+<td>为集合添加新成员</td>
+</tr>
+<tr>
+<td>srem</td>
+<td>sadd key member [member ...]</td>
+<td>删除集合中指定成员</td>
+</tr>
+<tr>
+<td>smembers</td>
+<td>smembers key</td>
+<td>获得集合中所有元素</td>
+</tr>
+<tr>
+<td>spop</td>
+<td>spop key [count]</td>
+<td>返回集合中一个随机元素，并将该元素删除</td>
+</tr>
+<tr>
+<td>srandmember</td>
+<td>srandmember key [count]</td>
+<td>返回集合中一个随机元素，不会删除该元素</td>
+</tr>
+<tr>
+<td>scard</td>
+<td>scrad key</td>
+<td>获得集合中元素的数量</td>
+</tr>
+<tr>
+<td>sismember</td>
+<td>sismember key member</td>
+<td>判断元素是否在集合内</td>
+</tr>
+<tr>
+<td>sinter</td>
+<td>sinter key [key ...]</td>
+<td>求多集合的交集</td>
+</tr>
+<tr>
+<td>sdiff</td>
+<td>sdiff key [key ...]</td>
+<td>求多集合的差集</td>
+</tr>
+<tr>
+<td>sunion</td>
+<td>sunion key [key ...]</td>
+<td>求多集合的并集</td>
+</tr>
+</tbody>
+</table>
+<h1 id="有序集合常用操作命令">有序集合常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令名称</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>zadd</td>
+<td>zadd key [NX|XX] [CH] [INCR] score member [score member ...]</td>
+<td>为有序集合添加新成员</td>
+</tr>
+<tr>
+<td>zrem</td>
+<td>zrem key member [member ...]</td>
+<td>删除有序集合中指定成员</td>
+</tr>
+<tr>
+<td>zcard</td>
+<td>zcard key</td>
+<td>获得有序集合中的元素数量</td>
+</tr>
+<tr>
+<td>zcount</td>
+<td>zcount key min max</td>
+<td>返回集合中score值在 [min,max] 区间 的元素数量</td>
+</tr>
+<tr>
+<td>zincrby</td>
+<td>zincrby key increment member</td>
+<td>在集合的member分值上加increment</td>
+</tr>
+<tr>
+<td>zscore</td>
+<td>zsorce key member</td>
+<td>获得集合中member的分值</td>
+</tr>
+<tr>
+<td>zrank</td>
+<td>zrank key member</td>
+<td>获得集合中member的排名（按分值从 小到大）</td>
+</tr>
+<tr>
+<td>zrevrank</td>
+<td>zrevrank key member</td>
+<td>获得集合中member的排名（按分值从 大到小）</td>
+</tr>
+<tr>
+<td>zrange</td>
+<td>zrange key start stop [withscores]</td>
+<td>获得集合中指定区间成员，按分数递增 排序</td>
+</tr>
+<tr>
+<td>zrevrange</td>
+<td>zrevrange key start stop [withscores]</td>
+<td>获得集合中指定区间成员，按分数递减 排序</td>
+</tr>
+</tbody>
+</table>
+<h1 id="字典常用操作命令">字典常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令名称</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>hset</td>
+<td>hset key field value</td>
+<td>赋值</td>
+</tr>
+<tr>
+<td>hmset</td>
+<td>hset key field value [field value ...]</td>
+<td>批量赋值</td>
+</tr>
+<tr>
+<td>hsetnx</td>
+<td>hsetnx key field value</td>
+<td>赋值[不存在]</td>
+</tr>
+<tr>
+<td>hexists</td>
+<td>hexists key field</td>
+<td>查看值是否存在</td>
+</tr>
+<tr>
+<td>hget</td>
+<td>hget key field</td>
+<td>获取一个字段值</td>
+</tr>
+<tr>
+<td>hmget</td>
+<td>hget key field [field ...]</td>
+<td>获取多个字段值</td>
+</tr>
+<tr>
+<td>hgetall</td>
+<td>hgetall key</td>
+<td>获取所有字段值</td>
+</tr>
+<tr>
+<td>hdel</td>
+<td>hdel key field [field ...]</td>
+<td>删除指定字段</td>
+</tr>
+<tr>
+<td>hincrby</td>
+<td>hincrby key field increment</td>
+<td>指定字段自增</td>
+</tr>
+<tr>
+<td>hlen</td>
+<td>hlen key</td>
+<td>获得字段数量</td>
+</tr>
+</tbody>
+</table>
+<h1 id="位图常用操作命令">位图常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令名称</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>setbit</td>
+<td>setbit key offset value</td>
+<td>设置key在offset处的bit值</td>
+</tr>
+<tr>
+<td>getbit</td>
+<td>getbit key offset</td>
+<td>获得key在offset处的bit值</td>
+</tr>
+<tr>
+<td>bitcount</td>
+<td>bitcount key [start end]</td>
+<td>获得key的bit位为1的个数</td>
+</tr>
+<tr>
+<td>bitpos</td>
+<td>bitpos key bit [start] [end]</td>
+<td>返回第一个被设置为bit值的索引值</td>
+</tr>
+<tr>
+<td>bitop</td>
+<td>bitop operation destkey key [key ...]</td>
+<td>对多个key 进行逻辑运算后存入destkey 中</td>
+</tr>
+</tbody>
+</table>
+<h1 id="地理位置常用操作命令">地理位置常用操作命令</h1>
+<table>
+<thead>
+<tr>
+<th>命令名称</th>
+<th>命令格式</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>geoadd</td>
+<td>geoadd key longitude latitude member [longitude latitude member ...]</td>
+<td>添加地理坐标</td>
+</tr>
+<tr>
+<td>geohash</td>
+<td>geohash key member [member ...]</td>
+<td>返回标准的地理位置哈希串</td>
+</tr>
+<tr>
+<td>geopos</td>
+<td>geopos key member [member ...]</td>
+<td>返回成员经纬度</td>
+</tr>
+<tr>
+<td>geodist</td>
+<td>geodist key member1 member2 [unit]</td>
+<td>计算成员间距离</td>
+</tr>
+<tr>
+<td>georadiusbymember</td>
+<td>georadiusbymember key member radius m|km|ft|mi [withcoord] [withdist] [withhash] [count number] [asc|desc]</td>
+<td>根据成员查找附近的成员</td>
+</tr>
+</tbody>
+</table>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[面向切片编程高级应用与源码分析]]></title>
         <id>https://hezb.xyz/post/mian-xiang-qie-pian-bian-cheng-gao-ji-ying-yong-yu-yuan-ma-fen-xi/</id>
@@ -214,122 +883,6 @@ public class LogUtils {
 </table>
 <h2 id="事务失效场景">事务失效场景</h2>
 <p>https://juejin.cn/post/7003949263281455112</p>
-]]></content>
-    </entry>
-    <entry>
-        <title type="html"><![CDATA[容器初始化主流程代码调用分析]]></title>
-        <id>https://hezb.xyz/post/rong-qi-chu-shi-hua-zhu-liu-cheng-dai-ma-diao-yong-fen-xi/</id>
-        <link href="https://hezb.xyz/post/rong-qi-chu-shi-hua-zhu-liu-cheng-dai-ma-diao-yong-fen-xi/">
-        </link>
-        <updated>2022-01-09T14:57:17.000Z</updated>
-        <content type="html"><![CDATA[<h1 id="生命周期关键时机点底层调用规律">生命周期关键时机点底层调用规律</h1>
-<p>通过实现特殊接⼝，并分别在接⼝实现的构造器、接⼝⽅法中断点，观察线程调⽤栈发现</p>
-<p>对象创建的关键时机点代码相同的层级调用：AbstractApplicationContext#refresh</p>
-<table>
-<thead>
-<tr>
-<th>关键点</th>
-<th>触发代码</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Constructor 构造器执行</td>
-<td>refresh#finishBeanFactoryInitialization(beanFactory)(beanFactory)</td>
-</tr>
-<tr>
-<td>InitializingBean 方法执行</td>
-<td>refresh#finishBeanFactoryInitialization(beanFactory)(beanFactory)</td>
-</tr>
-<tr>
-<td>BeanFactoryPostProcessor 初始化</td>
-<td>refresh#invokeBeanFactoryPostProcessors(beanFactory)</td>
-</tr>
-<tr>
-<td>BeanFactoryPostProcessor 方法调用</td>
-<td>refresh#invokeBeanFactoryPostProcessors(beanFactory)</td>
-</tr>
-<tr>
-<td>BeanPostProcessor 初始化</td>
-<td>refresh#registerBeanPostProcessors(beanFactory)</td>
-</tr>
-<tr>
-<td>BeanPostProcessor 方法调用</td>
-<td>refresh#finishBeanFactoryInitialization(beanFactory)</td>
-</tr>
-</tbody>
-</table>
-<h1 id="容器初始化主流程">容器初始化主流程</h1>
-<pre><code class="language-java">    public void refresh() throws BeansException, IllegalStateException {
-        /*对象锁，启动、刷新、关闭容器不能同时进行*/
-        synchronized(this.startupShutdownMonitor) {
-            StartupStep contextRefresh = this.applicationStartup.start(&quot;spring.context.refresh&quot;);
-            /*Refresh 预处理工作：设置容器启动时间、状态、环境变量属性校验等*/
-            this.prepareRefresh();
-            /*BeanFactory 创建 ，并将配置文件中的信息封装成 BeanDefinition 并注册到 BeanDefinitionRegistry*/
-            ConfigurableListableBeanFactory beanFactory = this.obtainFreshBeanFactory();
-            /*BeanFactory 预处理工作：类加载器设置等*/
-            this.prepareBeanFactory(beanFactory);
-            try {
-                /*BeanFactory 后置处理工作：空实现，留待扩展使用*/
-                this.postProcessBeanFactory(beanFactory);
-                StartupStep beanPostProcess = this.applicationStartup.start(&quot;spring.context.beans.post-process&quot;);
-                /*BeanFactory 后置处理方法执行*/
-                this.invokeBeanFactoryPostProcessors(beanFactory);
-                /*Bean 后置处理器注册*/
-                this.registerBeanPostProcessors(beanFactory);
-                beanPostProcess.end();
-                /*MessageSource 国际化功能组件初始化*/
-                this.initMessageSource();
-                /*EventMulticaster 事件分发器初始化*/
-                this.initApplicationEventMulticaster();
-                /*Refresh Hook 容器刷新钩子方法：空实现，留待扩展使用*/
-                this.onRefresh();
-                /*ApplicationListener 接口实现应用监听类对象注册*/
-                this.registerListeners();
-                /*Bean 实例化、初始化方法调用以及后置处理*/
-                this.finishBeanFactoryInitialization(beanFactory);
-                /*Context 刷新完成并发布 ContextRefreshedEvent 事件*/
-                this.finishRefresh();
-            }
-            ……
-        }
-    }
-</code></pre>
-<h2 id="beanfactory-创建流程">BeanFactory 创建流程</h2>
-<pre><code class="language-java">    protected ConfigurableListableBeanFactory obtainFreshBeanFactory() {
-        /*工厂刷新*/
-        this.refreshBeanFactory();
-        /*工厂返回*/
-        return this.getBeanFactory();
-    }
-</code></pre>
-<h3 id="beanfactory-刷新流程">BeanFactory 刷新流程</h3>
-<pre><code class="language-java">    protected final void refreshBeanFactory() throws BeansException {
-        /*判断是否已经存在，内部实现使用同步锁判断*/
-        if (this.hasBeanFactory()) {
-            /*销毁对象并关闭工厂*/
-            this.destroyBeans();
-            this.closeBeanFactory();
-        }
-
-        try {
-            /*实例化工厂*/
-            DefaultListableBeanFactory beanFactory = this.createBeanFactory();
-            /*设置序列化编号*/
-            beanFactory.setSerializationId(this.getId());
-            /*自定义工厂的属性：是否覆盖，是否允许循环依赖*/
-            this.customizeBeanFactory(beanFactory);
-            /*加载应用中的配置信息对象*/
-            this.loadBeanDefinitions(beanFactory);
-            /*工厂赋值*/
-            this.beanFactory = beanFactory;
-        } 
-        ……
-    }
-</code></pre>
-<h3 id="beandefinition-加载注册流程">BeanDefinition 加载注册流程</h3>
-<h2 id="bean-创建流程">Bean 创建流程</h2>
 ]]></content>
     </entry>
     <entry>

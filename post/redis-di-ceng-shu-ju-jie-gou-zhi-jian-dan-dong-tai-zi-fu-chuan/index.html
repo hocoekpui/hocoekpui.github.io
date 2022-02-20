@@ -1,0 +1,265 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Redis底层数据结构之简单动态字符串 | 河捉贝</title>
+<link rel="shortcut icon" href="https://hezb.xyz/favicon.ico?v=1645348401999">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hezb.xyz/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Redis底层数据结构之简单动态字符串 | 河捉贝 - Atom Feed" href="https://hezb.xyz/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="原生字符串实现缓存存在的问题
+观察原生字符串的结构设计，它是一块连续的内存空间
+
+原生实现中，判断字符串结束的的依据是空字符，因此如果数据中包含结束符就会被截断，不满足保存二进制数据的需求
+其次是为了获取字符串长度或者寻找字符串结尾必须遍历..." />
+    <meta name="keywords" content="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://hezb.xyz">
+  <img class="avatar" src="https://hezb.xyz/images/avatar.png?v=1645348401999" alt="">
+  </a>
+  <h1 class="site-title">
+    河捉贝
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Redis底层数据结构之简单动态字符串
+            </h2>
+            <div class="post-info">
+              <span>
+                2022-02-03
+              </span>
+              <span>
+                6 min read
+              </span>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <h1 id="原生字符串实现缓存存在的问题">原生字符串实现缓存存在的问题</h1>
+<p>观察原生字符串的结构设计，它是一块连续的内存空间<br>
+<img src="https://hezb.xyz/post-images/1643882707590.png" alt="" loading="lazy"></p>
+<p>原生实现中，判断字符串结束的的依据是空字符，因此如果数据中包含结束符就会被截断，不满足保存二进制数据的需求</p>
+<p>其次是为了获取字符串长度或者寻找字符串结尾必须遍历整个字符串，以字符串追加函数为例，它先通过遍历字符串得到目标字符串的末尾，再通过遍历完成追加源字符串</p>
+<pre><code class="language-c">char *strcat(char *dest, const char *src) {
+    char *tmp = dest;     
+    while(*dest) dest++;  
+    while((*dest++ = *src++) != '\0' )    
+    return tmp;
+}     
+</code></pre>
+<p>除此之外，由于原生字符串不记录自身长度容易造成缓冲区溢出，举个栗子，假设有两个在内存中紧凑的字符串</p>
+<figure data-type="image" tabindex="1"><img src="https://hezb.xyz/post-images/1643882847292.png" alt="" loading="lazy"></figure>
+<p>此时如果一个程序员通过执行以下命令，想修改第一个字符串的值，但却忘了给它分配足够的内存空间，函数执行后将溢出到下一个字符串所在的空间中</p>
+<pre><code class="language-c">    strcat(s1, &quot;Cluster&quot;)
+</code></pre>
+<p>导致另外一个字符串保存的内容被修改了，如图所示</p>
+<figure data-type="image" tabindex="2"><img src="https://hezb.xyz/post-images/1643882875848.png" alt="" loading="lazy"></figure>
+<p>不仅如此，原生字符串的长度与底层数组长度存在关联性，因此每次增长或者缩短一个字符串，程序都要对保存该字符串的数组进行一次内存重分配操作</p>
+<p>由于内存重分配涉及到系统调用，因此如果频繁修改数据会对系统性能造成影响</p>
+<h1 id="简单动态字符串的结构设计">简单动态字符串的结构设计</h1>
+<p>简单动态字符串是字符串对象的实现方式之一，其结构设计如下所示</p>
+<pre><code class="language-c">struct sdshdr { 
+    ? len;  
+    ? alloc;  
+    unsigned char flags;   
+    char buf[]; };       
+</code></pre>
+<p>其本质还是字符数组，遵守字符串以空字符结尾的惯例，这样的好处是可以直接复用一部分函数库里的函数，但它是二进制安全的，因为他不再通过空白符判断字符串是否结束</p>
+<p>仍然以字符串追加函数为例，看简单动态字符串如何实现更高的操作效率</p>
+<pre><code class="language-c">sds sdscatlen(sds s, const void *t, size_t len) { 
+    size_t curlen = sdslen(s);  
+    s = sdsMakeRoomFor(s,len);  
+    if (s == NULL) return NULL;  
+    memcpy(s+curlen, t, len); 
+    sdssetlen(s, curlen+len);   
+    s[curlen+len] = '\0';   
+    return s; 
+}    
+</code></pre>
+<p>执行过程主要分为三个步骤</p>
+<ol>
+<li>首先根据目标字符串与源字符串的长度判断是否需要为目标字符串扩容</li>
+<li>保证了目标字符串的空间足够后，将源字符串追加到目标字符串</li>
+<li>最后更新目标字符串的长度</li>
+</ol>
+<p>简而言之，简单动态字符串通过记录字符数组的使用长度和分配空间大小，避免了字符串的遍历操作和缓冲区溢出，而且还减少了修改字符串时带来的内存重分配次数</p>
+<h1 id="简单动态字符串如何减少内存重分配次数">简单动态字符串如何减少内存重分配次数</h1>
+<p>为了避免操作原生字符串导致频繁内存重分配的缺陷，简单动态字符串通过未使用空间，实现了空间预分配和惰性空间释放两种优化策略</p>
+<p>空间预分配用于优化字符串增长操作：当对一个字符串修改并需要进行空间扩展时，程序不仅会分配修改所需的空间，还会分配额外的未使用空间</p>
+<p>额外分配的未使用空间数量由以下公式决定</p>
+<ul>
+<li>如果修改后字符串的长度 ＜ 1MB，程序会分配与长度一样的未使用空间</li>
+<li>如果修改后字符串的长度 ≥ 1MB，程序会分配 1MB 的未使用空间</li>
+</ul>
+<p>空间预分配用于优化字符串缩短操作：当对一个字符串修改并需要进行缩短时，程序并不立即使用内存重分配来回收多余的字节，为将来可能有的增长操作提供了优化</p>
+<h1 id="简单动态字符串如何节省内存">简单动态字符串如何节省内存</h1>
+<p>前面谈到其结构设计时，有一个名为字符串类型的元数据</p>
+<p>不同类型字符串区别在于字符数组长度和分配空间长度的数据类型不一样，之所以设计不同的字符串类型，其实是为了能灵活保存不同长度的字符串，从而有效节省内存空间</p>
+<p>以其中一种字符串类型为例</p>
+<pre><code class="language-c">struct __attribute__ ((__packed__)) sdshdr8 {   
+    uint8_t len; 
+    uint8_t alloc;   
+    unsigned char flags;
+    char buf[]; 
+};  
+</code></pre>
+<p>长度和分配空间属性类型都是 8 位无符号整型，各占用 1 个字节，所以这种类型能表示的字符数组长度不会超过 256 字节</p>
+<p>假设简单动态字符串的类型固定为最大的 “sdshdr64”，则字符串的长度与分配空间参数类型为 “uint64_t”，假设保存的字符串大小为 10 字节，而此时结构头中字符串的长度与分配空间本身就占用了 16 个字节，这样设计对内存并不友好</p>
+<p>除此之外，简单动态字符串还使用了专门的编译优化来节省内存空间</p>
+<pre><code class="language-c">    struct __attribute__ ((__packed__)) sdshdr8    
+</code></pre>
+<p>在刚刚介绍的结构类型定义中，结构声明关键字与类型之间有一串特殊的字符串，它的作用就是告诉编译器在编译的时候不要使用字节对齐的方式，而是采用紧凑的方式分配内存</p>
+<p>举个栗子方便理解</p>
+<pre><code class="language-c">#include &lt;stdio.h&gt;
+int main() { 
+struct s1 {   
+    char a;  
+    int b;  
+} ts1;   
+printf(&quot;%lu\n&quot;, sizeof(ts1));  
+return 0; 
+}      
+</code></pre>
+<p>众所周知，字符串类型占用 1 个字节，整形占用 4 个字节，但打印的结果是 8</p>
+<pre><code class="language-c">#include &lt;stdio.h&gt; 
+int main() {  
+struct __attribute__((packed)) s2{ 
+    char a;    
+    int b;
+} ts2; 
+printf(&quot;%lu\n&quot;, sizeof(ts2));  
+return 0; 
+}   
+</code></pre>
+<p>但是用 “<strong>attribute</strong> ((<strong>packed</strong>))” 属性定义结构体，打印结果则为 5</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li><a href="#%E5%8E%9F%E7%94%9F%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%AE%9E%E7%8E%B0%E7%BC%93%E5%AD%98%E5%AD%98%E5%9C%A8%E7%9A%84%E9%97%AE%E9%A2%98">原生字符串实现缓存存在的问题</a></li>
+<li><a href="#%E7%AE%80%E5%8D%95%E5%8A%A8%E6%80%81%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%9A%84%E7%BB%93%E6%9E%84%E8%AE%BE%E8%AE%A1">简单动态字符串的结构设计</a></li>
+<li><a href="#%E7%AE%80%E5%8D%95%E5%8A%A8%E6%80%81%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%A6%82%E4%BD%95%E5%87%8F%E5%B0%91%E5%86%85%E5%AD%98%E9%87%8D%E5%88%86%E9%85%8D%E6%AC%A1%E6%95%B0">简单动态字符串如何减少内存重分配次数</a></li>
+<li><a href="#%E7%AE%80%E5%8D%95%E5%8A%A8%E6%80%81%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%A6%82%E4%BD%95%E8%8A%82%E7%9C%81%E5%86%85%E5%AD%98">简单动态字符串如何节省内存</a></li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://hezb.xyz/post/redis-chang-jian-shu-ju-jie-gou-yu-chang-yong-ming-ling/">
+              <h3 class="post-title">
+                Redis常见数据结构与常用命令
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  
+  <a class="rss" href="https://hezb.xyz/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
