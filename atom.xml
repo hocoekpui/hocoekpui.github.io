@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://hezb.xyz</id>
     <title>河捉贝</title>
-    <updated>2022-02-20T09:17:02.272Z</updated>
+    <updated>2022-02-20T09:17:45.090Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://hezb.xyz"/>
     <link rel="self" href="https://hezb.xyz/atom.xml"/>
@@ -122,7 +122,7 @@ void dictDisableResize(void) {
      }   
      /*判断主哈希表的键值对是否已经迁移完成*/
      if ( d-&gt;ht[0].used == 0 ) { 
-         /*释放主哈希表的内存空间*    
+         /*释放主哈希表的内存空间*/
          zfree(d-&gt;ht[0].table);
          /*主哈希表指针指向备份表，备份表成为主哈希表*/  
          d-&gt;ht[0] = d-&gt;ht[1];  

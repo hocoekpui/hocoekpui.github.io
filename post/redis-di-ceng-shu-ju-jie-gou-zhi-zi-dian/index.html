@@ -3,7 +3,7 @@
     <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Redis底层数据结构之字典 | 河捉贝</title>
-<link rel="shortcut icon" href="https://hezb.xyz/favicon.ico?v=1645348578083">
+<link rel="shortcut icon" href="https://hezb.xyz/favicon.ico?v=1645348660650">
 <link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
 <link rel="stylesheet" href="https://hezb.xyz/styles/main.css">
 <link rel="alternate" type="application/atom+xml" title="Redis底层数据结构之字典 | 河捉贝 - Atom Feed" href="https://hezb.xyz/atom.xml">
@@ -25,7 +25,7 @@
       <div class="main-content">
         <div class="site-header">
   <a href="https://hezb.xyz">
-  <img class="avatar" src="https://hezb.xyz/images/avatar.png?v=1645348578083" alt="">
+  <img class="avatar" src="https://hezb.xyz/images/avatar.png?v=1645348660650" alt="">
   </a>
   <h1 class="site-title">
     河捉贝
@@ -192,7 +192,7 @@ void dictDisableResize(void) {
      }   
      /*判断主哈希表的键值对是否已经迁移完成*/
      if ( d-&gt;ht[0].used == 0 ) { 
-         /*释放主哈希表的内存空间*    
+         /*释放主哈希表的内存空间*/
          zfree(d-&gt;ht[0].table);
          /*主哈希表指针指向备份表，备份表成为主哈希表*/  
          d-&gt;ht[0] = d-&gt;ht[1];  
