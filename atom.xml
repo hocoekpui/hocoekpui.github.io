@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://hocoekpui.github.io</id>
+    <title>coekpui</title>
+    <updated>2024-05-19T08:14:22.771Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://hocoekpui.github.io"/>
+    <link rel="self" href="https://hocoekpui.github.io/atom.xml"/>
+    <logo>https://hocoekpui.github.io/images/avatar.png</logo>
+    <icon>https://hocoekpui.github.io/favicon.ico</icon>
+    <rights>All rights reserved 2024, coekpui</rights>
+    <entry>
+        <title type="html"><![CDATA[Workout]]></title>
+        <id>https://hocoekpui.github.io/Zva3AZNcW/</id>
+        <link href="https://hocoekpui.github.io/Zva3AZNcW/">
+        </link>
+        <updated>2024-02-18T16:00:00.000Z</updated>
+        <summary type="html"><![CDATA[<p>我的锻炼记录😼</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>我的锻炼记录😼</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Film]]></title>
+        <id>https://hocoekpui.github.io/cb3ePlXFN/</id>
+        <link href="https://hocoekpui.github.io/cb3ePlXFN/">
+        </link>
+        <updated>2021-09-24T16:00:00.000Z</updated>
+        <summary type="html"><![CDATA[<p>我的观影记录🙉</p>
+]]></summary>
+        <content type="html"><![CDATA[<p>我的观影记录🙉</p>
+]]></content>
+    </entry>
+</feed>
